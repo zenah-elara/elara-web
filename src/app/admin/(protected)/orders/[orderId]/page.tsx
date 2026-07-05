@@ -220,7 +220,12 @@ export default async function AdminOrderDetailPage({
                       </div>
                       {item.selected_size ? (
                         <p className="mt-2 text-xs font-semibold text-[#7A3F63]">
-                          Size / length: {item.selected_size}
+                          {item.selected_size_label ?? "Size / length"}: {item.selected_size}
+                        </p>
+                      ) : null}
+                      {item.selected_custom_length ? (
+                        <p className="mt-2 text-xs font-semibold text-[#7A3F63]">
+                          {item.selected_custom_length_label ?? "Custom length"}: {item.selected_custom_length}
                         </p>
                       ) : null}
                     </div>
@@ -388,7 +393,12 @@ export default async function AdminOrderDetailPage({
                     </p>
                     {item.selected_size ? (
                       <p className="mt-1 text-xs font-semibold text-[#7A3F63]">
-                        Size / length: {item.selected_size}
+                        {item.selected_size_label ?? "Size / length"}: {item.selected_size}
+                      </p>
+                    ) : null}
+                    {item.selected_custom_length ? (
+                      <p className="mt-1 text-xs font-semibold text-[#7A3F63]">
+                        {item.selected_custom_length_label ?? "Custom length"}: {item.selected_custom_length}
                       </p>
                     ) : null}
                   </div>

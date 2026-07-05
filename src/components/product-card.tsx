@@ -6,6 +6,10 @@ import { ImagePlaceholder } from "./image-placeholder";
 import { StockBadge } from "./stock-badge";
 
 export function ProductCard({ product }: { product: Product }) {
+  const requiresProductOptions =
+    (product.sizeLengthBehavior && product.sizeLengthBehavior !== "none") ||
+    (product.isSizeCustomizable && Boolean(product.sizeOptions?.length));
+
   return (
     <article className="group relative overflow-hidden rounded-[2.5rem] border border-[#f2c8d5] bg-[linear-gradient(180deg,#fffdf8_0%,#fff4f8_100%)] p-3 shadow-[0_20px_48px_rgba(211,140,157,0.16)] transition hover:-translate-y-1 hover:border-[#E2B4C1] hover:shadow-[0_30px_70px_rgba(211,140,157,0.24)]">
       <div className="pointer-events-none absolute right-6 top-6 h-2 w-2 rounded-full bg-white/86 shadow-[18px_10px_0_rgba(251,230,238,0.95),34px_-4px_0_rgba(255,255,255,0.72)]" />
@@ -51,11 +55,15 @@ export function ProductCard({ product }: { product: Product }) {
             <FinishBadge finishType={product.finishType} />
           </div>
         ) : null}
-        {product.isSizeCustomizable && product.sizeOptions?.length ? (
+        {product.sizeLengthBehavior && product.sizeLengthBehavior !== "none" ? (
           <p className="mt-2 text-xs font-semibold text-[#9A4F78]">
-            {product.sizeLabel?.toLowerCase().includes("length")
-              ? "Length options"
-              : "Sizes available"}
+            {product.sizeLengthBehavior === "custom"
+              ? "Custom length available"
+              : product.sizeLengthBehavior === "preset_and_custom"
+                ? "Sizes and custom length available"
+                : product.sizeLabel?.toLowerCase().includes("length")
+                  ? "Length options"
+                  : "Sizes available"}
           </p>
         ) : null}
         <div className="mt-4 flex items-center justify-between gap-3">
@@ -67,19 +75,28 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-          <AddToCartButton
-            item={{
-              productId: product.id,
-              slug: product.slug,
-              name: product.name,
-              imageUrl: product.imageUrl,
-              unitPrice: product.price,
-              stockQuantity: product.stock,
-              lowStockThreshold: product.lowStockThreshold,
-              finishType: product.finishType,
-            }}
-            className="w-full"
-          />
+          {requiresProductOptions ? (
+            <Link
+              href={`/products/${product.slug}`}
+              className="inline-flex min-h-10 w-full items-center justify-center rounded-full bg-[#d38aa0] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c77992]"
+            >
+              Choose options
+            </Link>
+          ) : (
+            <AddToCartButton
+              item={{
+                productId: product.id,
+                slug: product.slug,
+                name: product.name,
+                imageUrl: product.imageUrl,
+                unitPrice: product.price,
+                stockQuantity: product.stock,
+                lowStockThreshold: product.lowStockThreshold,
+                finishType: product.finishType,
+              }}
+              className="w-full"
+            />
+          )}
           <Link
             href={`/products/${product.slug}`}
             className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#f2c8d5] bg-white/82 px-4 py-2 text-sm font-semibold text-[#8f4968] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#fff2f6] hover:text-[#A55166]"

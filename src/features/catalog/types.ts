@@ -28,8 +28,16 @@ export type ProductWithRelations = {
   finish_type: CatalogProduct["finishType"];
   finish_notes: string | null;
   is_size_customizable: boolean | null;
+  size_length_behavior:
+    | "none"
+    | "preset"
+    | "custom"
+    | "preset_and_custom"
+    | null;
   size_options: string[] | null;
   size_label: string | null;
+  custom_length_label: string | null;
+  custom_length_help_text: string | null;
   fixed_size_note: string | null;
   builder_price_tier: CatalogProduct["builderPriceTier"] | null;
   stock_quantity: number;

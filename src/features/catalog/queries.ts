@@ -53,6 +53,12 @@ function mapCollection(collection: {
 
 function mapProduct(product: ProductWithRelations): CatalogProduct {
   const finishType = normalizeMaterialType(product.finish_type);
+  const sizeLengthBehavior =
+    product.size_length_behavior && product.size_length_behavior !== "none"
+      ? product.size_length_behavior
+      : product.is_size_customizable && product.size_options?.length
+        ? "preset"
+        : "none";
   const sortedImages = [...(product.product_images ?? [])].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
   );
@@ -87,8 +93,11 @@ function mapProduct(product: ProductWithRelations): CatalogProduct {
     finishType,
     finishNotes: product.finish_notes ?? null,
     isSizeCustomizable: Boolean(product.is_size_customizable),
+    sizeLengthBehavior,
     sizeOptions: product.size_options ?? [],
     sizeLabel: product.size_label,
+    customLengthLabel: product.custom_length_label,
+    customLengthHelpText: product.custom_length_help_text,
     fixedSizeNote: product.fixed_size_note,
     builderPriceTier: product.builder_price_tier ?? "basic",
     tags: product.product_tags?.map((tag) => tag.tag) ?? [],
@@ -178,8 +187,11 @@ async function fetchProducts(
         finish_type,
         finish_notes,
         is_size_customizable,
+        size_length_behavior,
         size_options,
         size_label,
+        custom_length_label,
+        custom_length_help_text,
         fixed_size_note,
         builder_price_tier,
         stock_quantity,

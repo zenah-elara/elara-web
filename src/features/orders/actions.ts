@@ -174,7 +174,8 @@ function isValidRegularItem(item: RegularCartItem) {
     Boolean(item.name) &&
     hasValidPrice(item.unitPrice) &&
     Number.isInteger(item.quantity) &&
-    item.quantity > 0
+    item.quantity > 0 &&
+    (!item.customLength || item.customLength.trim().length <= 80)
   );
 }
 
@@ -372,7 +373,9 @@ export async function submitOrderRequest(
   const productIds = [...requiredQuantities.keys()];
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, is_active, stock_quantity")
+    .select(
+      "id, name, is_active, stock_quantity, is_size_customizable, size_length_behavior, size_options",
+    )
     .in("id", productIds);
 
   if (productError || !products) {
@@ -392,6 +395,9 @@ export async function submitOrderRequest(
     (products as Pick<
       ProductRow,
       "id" | "name" | "is_active" | "stock_quantity"
+      | "is_size_customizable"
+      | "size_length_behavior"
+      | "size_options"
     >[]).map((product) => [product.id, product]),
   );
 
@@ -419,6 +425,44 @@ export async function submitOrderRequest(
       return {
         success: false,
         message: `${required.name} is not available in the selected quantity.`,
+      };
+    }
+  }
+
+  for (const item of cartItems) {
+    if (item.itemType === "custom_necklace") continue;
+
+    const product = productMap.get(item.productId);
+    if (!product) continue;
+
+    const behavior =
+      product.size_length_behavior !== "none"
+        ? product.size_length_behavior
+        : product.is_size_customizable && product.size_options?.length
+          ? "preset"
+          : "none";
+    const requiresPreset =
+      behavior === "preset" || behavior === "preset_and_custom";
+    const requiresCustomLength =
+      behavior === "custom" || behavior === "preset_and_custom";
+
+    if (
+      requiresPreset &&
+      (!item.selectedSize || !product.size_options?.includes(item.selectedSize))
+    ) {
+      return {
+        success: false,
+        message: `Please choose an available size or length for ${item.name}.`,
+      };
+    }
+
+    if (
+      requiresCustomLength &&
+      (!item.customLength?.trim() || item.customLength.trim().length > 80)
+    ) {
+      return {
+        success: false,
+        message: `Please enter a valid requested length for ${item.name}.`,
       };
     }
   }
@@ -489,6 +533,16 @@ export async function submitOrderRequest(
         : item.name,
     selected_size:
       item.itemType === "custom_necklace" ? null : item.selectedSize ?? null,
+    selected_size_label:
+      item.itemType === "custom_necklace" ? null : item.sizeLabel ?? null,
+    selected_custom_length:
+      item.itemType === "custom_necklace"
+        ? null
+        : item.customLength?.trim() || null,
+    selected_custom_length_label:
+      item.itemType === "custom_necklace"
+        ? null
+        : item.customLengthLabel ?? null,
     unit_price: item.unitPrice,
     quantity: item.itemType === "custom_necklace" ? 1 : item.quantity,
     line_total: getCartLineTotal(item),

@@ -57,6 +57,12 @@ const productTypes: ProductType[] = [
 
 const finishTypes = ["gold_plated", "stainless_steel"] as const;
 const builderPriceTiers = ["basic", "premium"] as const;
+const sizeLengthBehaviors = [
+  "none",
+  "preset",
+  "custom",
+  "preset_and_custom",
+] as const;
 
 function finishTypeValue(formData: FormData) {
   const finishType = textValue(formData, "finish_type");
@@ -84,6 +90,20 @@ function builderPriceTierValue(formData: FormData) {
   }
 
   return tier as (typeof builderPriceTiers)[number];
+}
+
+function sizeLengthBehaviorValue(formData: FormData) {
+  const behavior = textValue(formData, "size_length_behavior") ?? "none";
+
+  if (
+    !sizeLengthBehaviors.includes(
+      behavior as (typeof sizeLengthBehaviors)[number],
+    )
+  ) {
+    throw new Error("size_length_behavior is invalid.");
+  }
+
+  return behavior as (typeof sizeLengthBehaviors)[number];
 }
 
 function listValue(formData: FormData, key: string) {
@@ -126,6 +146,25 @@ export function parseProductFormData(formData: FormData): ProductInsert {
     throw new Error("product_type is invalid.");
   }
 
+  const sizeLengthBehavior = sizeLengthBehaviorValue(formData);
+  const usesPresetSizes =
+    sizeLengthBehavior === "preset" ||
+    sizeLengthBehavior === "preset_and_custom";
+  const usesCustomLength =
+    sizeLengthBehavior === "custom" ||
+    sizeLengthBehavior === "preset_and_custom";
+  const sizeOptions = usesPresetSizes
+    ? listValue(formData, "size_options")
+    : null;
+
+  if (usesPresetSizes && !sizeOptions?.length) {
+    throw new Error("Preset size choices are required.");
+  }
+
+  if (usesCustomLength && !textValue(formData, "custom_length_label")) {
+    throw new Error("Custom length label is required.");
+  }
+
   return {
     name,
     slug,
@@ -136,9 +175,16 @@ export function parseProductFormData(formData: FormData): ProductInsert {
     finish_type: finishTypeValue(formData),
     finish_notes: textValue(formData, "finish_notes"),
     builder_price_tier: builderPriceTierValue(formData),
-    is_size_customizable: booleanValue(formData, "is_size_customizable"),
-    size_label: textValue(formData, "size_label"),
-    size_options: listValue(formData, "size_options"),
+    is_size_customizable: usesPresetSizes,
+    size_length_behavior: sizeLengthBehavior,
+    size_label: usesPresetSizes ? textValue(formData, "size_label") : null,
+    size_options: sizeOptions,
+    custom_length_label: usesCustomLength
+      ? textValue(formData, "custom_length_label")
+      : null,
+    custom_length_help_text: usesCustomLength
+      ? textValue(formData, "custom_length_help_text")
+      : null,
     fixed_size_note: textValue(formData, "fixed_size_note"),
     sku: textValue(formData, "sku"),
     material_details: textValue(formData, "material_details"),

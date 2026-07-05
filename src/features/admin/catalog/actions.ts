@@ -108,6 +108,7 @@ async function getAuthorizedSupabase() {
 function revalidateStorefrontCatalog(slug?: string | null) {
   revalidatePath("/");
   revalidatePath("/collections");
+  revalidatePath("/shop-products");
   revalidatePath("/products");
 
   if (slug) {

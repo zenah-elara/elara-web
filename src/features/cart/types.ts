@@ -67,6 +67,8 @@ export type RegularCartItem = {
   finishType?: "gold_plated" | "stainless_steel" | "non_tarnish" | null;
   selectedSize?: string | null;
   sizeLabel?: string | null;
+  customLength?: string | null;
+  customLengthLabel?: string | null;
 };
 
 export type CustomNecklaceCartItem = {

@@ -92,9 +92,12 @@ export default async function ProductDetailPage({
               lowStockThreshold: product.lowStockThreshold,
               finishType: product.finishType,
             }}
+            sizeLengthBehavior={product.sizeLengthBehavior}
             isSizeCustomizable={product.isSizeCustomizable}
             sizeOptions={product.sizeOptions}
             sizeLabel={product.sizeLabel}
+            customLengthLabel={product.customLengthLabel}
+            customLengthHelpText={product.customLengthHelpText}
             fixedSizeNote={product.fixedSizeNote}
           />
           <Button href="/checkout" variant="secondary">

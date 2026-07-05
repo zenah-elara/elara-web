@@ -156,7 +156,15 @@ export function ProductSetupFields({
         <select
           name="product_type"
           defaultValue={productType}
-          onChange={(event) => setProductType(event.target.value as ProductType)}
+          onChange={(event) => {
+            const nextProductType = event.target.value as ProductType;
+            setProductType(nextProductType);
+            window.dispatchEvent(
+              new CustomEvent("elara:product-type-change", {
+                detail: { productType: nextProductType },
+              }),
+            );
+          }}
           className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none"
         >
           {isLegacyType ? (

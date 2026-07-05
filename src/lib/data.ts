@@ -24,8 +24,15 @@ export type Product = {
   finishType?: "gold_plated" | "stainless_steel" | "non_tarnish" | null;
   finishNotes?: string | null;
   isSizeCustomizable?: boolean;
+  sizeLengthBehavior?:
+    | "none"
+    | "preset"
+    | "custom"
+    | "preset_and_custom";
   sizeOptions?: string[];
   sizeLabel?: string | null;
+  customLengthLabel?: string | null;
+  customLengthHelpText?: string | null;
   fixedSizeNote?: string | null;
   builderPriceTier?: "basic" | "premium";
   tags: string[];

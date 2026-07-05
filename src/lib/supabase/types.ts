@@ -191,8 +191,15 @@ export type Database = {
             | null;
           finish_notes: string | null;
           is_size_customizable: boolean;
+          size_length_behavior:
+            | "none"
+            | "preset"
+            | "custom"
+            | "preset_and_custom";
           size_options: string[] | null;
           size_label: string | null;
+          custom_length_label: string | null;
+          custom_length_help_text: string | null;
           fixed_size_note: string | null;
           builder_price_tier: "basic" | "premium";
           sku: string | null;
@@ -232,8 +239,15 @@ export type Database = {
             | null;
           finish_notes?: string | null;
           is_size_customizable?: boolean;
+          size_length_behavior?:
+            | "none"
+            | "preset"
+            | "custom"
+            | "preset_and_custom";
           size_options?: string[] | null;
           size_label?: string | null;
+          custom_length_label?: string | null;
+          custom_length_help_text?: string | null;
           fixed_size_note?: string | null;
           builder_price_tier?: "basic" | "premium";
           sku?: string | null;
@@ -273,8 +287,15 @@ export type Database = {
             | null;
           finish_notes?: string | null;
           is_size_customizable?: boolean;
+          size_length_behavior?:
+            | "none"
+            | "preset"
+            | "custom"
+            | "preset_and_custom";
           size_options?: string[] | null;
           size_label?: string | null;
+          custom_length_label?: string | null;
+          custom_length_help_text?: string | null;
           fixed_size_note?: string | null;
           builder_price_tier?: "basic" | "premium";
           sku?: string | null;
@@ -454,6 +475,9 @@ export type Database = {
             | "bracelet";
           item_name: string;
           selected_size: string | null;
+          selected_size_label: string | null;
+          selected_custom_length: string | null;
+          selected_custom_length_label: string | null;
           unit_price: number;
           quantity: number;
           line_total: number;
@@ -474,6 +498,9 @@ export type Database = {
             | "bracelet";
           item_name: string;
           selected_size?: string | null;
+          selected_size_label?: string | null;
+          selected_custom_length?: string | null;
+          selected_custom_length_label?: string | null;
           unit_price?: number;
           quantity?: number;
           line_total?: number;
@@ -494,6 +521,9 @@ export type Database = {
             | "bracelet";
           item_name?: string;
           selected_size?: string | null;
+          selected_size_label?: string | null;
+          selected_custom_length?: string | null;
+          selected_custom_length_label?: string | null;
           unit_price?: number;
           quantity?: number;
           line_total?: number;

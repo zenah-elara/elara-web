@@ -3,6 +3,7 @@ import {
   ProductSetupFields,
   ProductSetupGuide,
 } from "@/components/admin/product-setup-fields";
+import { ProductSizeLengthFields } from "@/components/admin/product-size-length-fields";
 import { SectionHeader } from "@/components/section-header";
 import {
   deleteProductImage,
@@ -173,55 +174,16 @@ export default async function EditProductPage({
           </label>
         </div>
 
-        <div className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
-          <p className="text-sm font-semibold text-cocoa">
-            Size / Length Options
-          </p>
-          <p className="mt-2 text-xs leading-5 text-[#76504a]">
-            Use this for rings, bracelets, and necklace chains. Leave off if
-            the product does not need size selection.
-          </p>
-          <label className="mt-4 flex items-center gap-3 text-sm font-semibold text-cocoa">
-            <input
-              name="is_size_customizable"
-              type="checkbox"
-              defaultChecked={Boolean(product.is_size_customizable)}
-              className="h-4 w-4"
-            />
-            Customers can choose a size/length for this product
-          </label>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-semibold text-cocoa">Size label</span>
-              <input
-                name="size_label"
-                defaultValue={product.size_label ?? ""}
-                placeholder="Ring size, Necklace length, Bracelet size"
-                className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none"
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-cocoa">Size options</span>
-              <input
-                name="size_options"
-                defaultValue={(product.size_options ?? []).join(", ")}
-                placeholder="5, 6, 7, 8, 9 or 16 inches, 18 inches"
-                className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none"
-              />
-            </label>
-            <label className="block md:col-span-2">
-              <span className="text-sm font-semibold text-cocoa">
-                Fixed size note
-              </span>
-              <input
-                name="fixed_size_note"
-                defaultValue={product.fixed_size_note ?? ""}
-                placeholder="Fixed length, no size selection needed."
-                className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none"
-              />
-            </label>
-          </div>
-        </div>
+        <ProductSizeLengthFields
+          defaultProductType={product.product_type}
+          defaultBehavior={product.size_length_behavior}
+          defaultIsSizeCustomizable={product.is_size_customizable}
+          defaultSizeLabel={product.size_label}
+          defaultSizeOptions={product.size_options}
+          defaultFixedSizeNote={product.fixed_size_note}
+          defaultCustomLengthLabel={product.custom_length_label}
+          defaultCustomLengthHelpText={product.custom_length_help_text}
+        />
 
         <div className="grid gap-5 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5 md:grid-cols-2">
           <label className="block">

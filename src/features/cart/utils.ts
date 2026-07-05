@@ -251,12 +251,17 @@ function normalizeStoredCartItem(value: unknown, index: number): CartItem {
 
   const productId = stringValue(item.productId ?? item.id ?? item.product_id);
   const selectedSize = nullableStringValue(item.selectedSize ?? item.selected_size);
+  const customLength = nullableStringValue(
+    item.customLength ?? item.custom_length ?? item.selected_custom_length,
+  );
 
   return {
     cartItemId:
       stringValue(item.cartItemId) ||
       (productId
-        ? `${productId}${selectedSize ? `-${selectedSize}` : ""}`
+        ? `${productId}${selectedSize ? `-${selectedSize}` : ""}${
+            customLength ? `-${customLength}` : ""
+          }`
         : `invalid-cart-item-${index}`),
     itemType: "regular_product",
     productId,
@@ -276,6 +281,10 @@ function normalizeStoredCartItem(value: unknown, index: number): CartItem {
     finishType: finishTypeValue(item.finishType),
     selectedSize,
     sizeLabel: nullableStringValue(item.sizeLabel ?? item.size_label),
+    customLength,
+    customLengthLabel: nullableStringValue(
+      item.customLengthLabel ?? item.custom_length_label,
+    ),
   };
 }
 
@@ -315,7 +324,8 @@ export function addCartItem(input: CartInput) {
     (item): item is RegularCartItem =>
       isRegularCartItem(item) &&
       item.productId === input.productId &&
-      (item.selectedSize ?? null) === (input.selectedSize ?? null),
+      (item.selectedSize ?? null) === (input.selectedSize ?? null) &&
+      (item.customLength ?? null) === (input.customLength ?? null),
   );
 
   if (existing) {
@@ -328,7 +338,9 @@ export function addCartItem(input: CartInput) {
       ...input,
       cartItemId:
         input.cartItemId ??
-        `${input.productId}${input.selectedSize ? `-${input.selectedSize}` : ""}`,
+        `${input.productId}${input.selectedSize ? `-${input.selectedSize}` : ""}${
+          input.customLength ? `-${input.customLength}` : ""
+        }`,
       quantity: normalizeQuantity(input.quantity ?? 1, input.stockQuantity),
     });
   }

@@ -130,6 +130,11 @@ export function CartView() {
                   {item.sizeLabel ?? "Size"}: {item.selectedSize}
                 </p>
               ) : null}
+              {item.itemType !== "custom_necklace" && item.customLength ? (
+                <p className="mt-1 text-xs font-semibold text-[#7A3F63]">
+                  {item.customLengthLabel ?? "Custom length"}: {item.customLength}
+                </p>
+              ) : null}
               {item.itemType === "custom_necklace" && item.chain.finishType ? (
                 <div className="mt-2">
                   <FinishBadge finishType={item.chain.finishType} />
