@@ -19,6 +19,9 @@ import type { BuilderSelectedCartItem } from "@/features/cart/types";
 import { addCustomNecklaceItem, createCartItemId } from "@/features/cart/utils";
 import { formatPrice } from "@/lib/data";
 
+const instagramUrl =
+  "https://www.instagram.com/elara.jewels.bcd?igsh=MTRoNTVjbDQyazltdw%3D%3D&utm_source=qr";
+
 type BuilderProductType = "charm" | "mini_charm" | "pendant" | "connector";
 
 type SelectedBuilderItem = BuilderSelectedCartItem;
@@ -177,7 +180,7 @@ export function NecklaceBuilder({
   const canAddToCart = Boolean(selectedChain) && Boolean(pricingSummary);
   const groupedItems = [
     {
-      label: "Main charms / pendants",
+      label: "Main charms",
       items: availableArrangementItems.filter(
         (item) =>
           !item.productType ||
@@ -296,7 +299,7 @@ export function NecklaceBuilder({
   function addToCart() {
     if (!isBuilderReady) {
       setMessage(
-        "Build Your Elara Piece needs active builder products first. Add chain, charm, pendant, mini charm, or connector products in Admin to start using the builder.",
+        "Build Your Elara Piece is coming soon. Please check back soon or message us for a custom request.",
       );
       return;
     }
@@ -350,6 +353,50 @@ export function NecklaceBuilder({
     setMessage("Custom necklace added to cart.");
   }
 
+  if (!isBuilderReady) {
+    return (
+      <section className="overflow-hidden rounded-[2rem] border border-[#efccd4] bg-[linear-gradient(135deg,#fff9f5_0%,#fde7ef_52%,#fff8e8_100%)] p-6 text-center shadow-[0_24px_60px_rgba(201,130,149,0.16)] sm:p-9">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c6a15a]">
+          A custom experience in progress
+        </p>
+        <h2 className="mt-3 text-3xl font-semibold leading-tight text-[#7A3F63]">
+          Build Your Elara Piece is coming soon.
+        </h2>
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-[#76504a] sm:text-base">
+          We’re preparing the chains and charms for this feature. Please check
+          back soon or message us on Instagram or Facebook for custom requests.
+        </p>
+        <div className="mx-auto mt-5 max-w-xl space-y-2 text-sm text-[#76504a]">
+          {availableChains.length === 0 ? (
+            <p>Chains are not available yet. Please check back soon.</p>
+          ) : null}
+          {availableArrangementItems.length === 0 ? (
+            <p>
+              Charms and add-ons are not available yet. Please check back soon.
+            </p>
+          ) : null}
+        </div>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/shop-products"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d38aa0] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#c77992]"
+          >
+            Shop Products
+          </Link>
+          <a
+            href={instagramUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Message elara. on Instagram"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#D5A84F] bg-[#FFF8F3] px-5 py-2 text-sm font-semibold text-[#7A3F63] transition hover:bg-[#FFEAF2]"
+          >
+            Message us
+          </a>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_430px]">
       <section className="rounded-[2rem] border border-[#f0c9d6] bg-gradient-to-br from-[#ffe1ec] via-[#fff8fb] to-[#fff2d9] p-5 shadow-[0_24px_60px_rgba(201,130,149,0.16)] lg:sticky lg:top-24 lg:h-fit">
@@ -393,7 +440,7 @@ export function NecklaceBuilder({
               ) : null}
               {selectedItems.length === 0 ? (
                 <p className="rounded-full bg-white/75 px-4 py-2 text-sm font-semibold text-[#7A3F63]">
-                  Add a main charm, pendant, or mini charm to preview your piece
+                  Add a main charm or mini charm to preview your piece
                 </p>
               ) : null}
             </div>
@@ -473,7 +520,7 @@ export function NecklaceBuilder({
                 </div>
               </li>
             ))}
-            {selectedItems.length === 0 ? <li>No selected pendants or charms yet.</li> : null}
+            {selectedItems.length === 0 ? <li>No selected charms yet.</li> : null}
           </ol>
           {selectedConnector ? (
             <div className="mt-4 rounded-2xl bg-[#fff8e8] p-3 text-sm text-[#76504a]">
@@ -492,30 +539,6 @@ export function NecklaceBuilder({
       </section>
 
       <section className="space-y-5">
-        {!isBuilderReady ? (
-          <div className="rounded-3xl border border-[#efd2bc] bg-[#fff7ef] p-5 text-sm leading-6 text-[#76504a]">
-            <p className="font-semibold text-[#7A3F63]">
-              Builder setup needed
-            </p>
-            <p className="mt-2">
-              Build Your Elara Piece needs active builder products first. Add
-              chain, charm, pendant, mini charm, or connector products in Admin
-              to start using the builder.
-            </p>
-            {availableChains.length === 0 ? (
-              <p className="mt-2">
-                Add an active chain product with stock in Admin to start
-                building.
-              </p>
-            ) : null}
-            {availableArrangementItems.length === 0 ? (
-              <p className="mt-2">
-                Add active charms, pendants, mini charms, or connectors in Admin
-                to make them available here.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
         <div className="rounded-3xl boutique-card p-5">
           <p className="text-sm font-semibold text-gold">Step 1</p>
           <h2 className="mt-2 text-2xl font-semibold text-[#7A3F63]">
@@ -566,8 +589,7 @@ export function NecklaceBuilder({
             ))}
             {availableChains.length === 0 ? (
               <p className="text-sm text-[#76504a]">
-                Add an active chain product with stock in Admin to start
-                building.
+                Chains are not available yet. Please check back soon.
               </p>
             ) : null}
           </div>
@@ -610,7 +632,7 @@ export function NecklaceBuilder({
         <div className="rounded-3xl boutique-card p-5">
           <p className="text-sm font-semibold text-gold">Step 3</p>
           <h2 className="mt-2 text-2xl font-semibold text-[#7A3F63]">
-            Pick pendants, charms, and minis
+            Pick main charms and minis
           </h2>
           <div className="mt-5 space-y-5">
             {groupedItems.map((group) => (
@@ -664,8 +686,8 @@ export function NecklaceBuilder({
                 </div>
                 {group.items.length === 0 ? (
                   <p className="mt-3 rounded-2xl bg-[#fff7fa] p-3 text-sm text-[#76504a]">
-                    Add active charms, pendants, mini charms, or connectors in
-                    Admin to make them available here.
+                    Charms and add-ons are not available yet. Please check back
+                    soon.
                   </p>
                 ) : null}
               </div>
@@ -679,8 +701,8 @@ export function NecklaceBuilder({
             Choose a connector
           </h2>
           <p className="mt-2 text-sm leading-6 text-[#76504a]">
-            A connector works like a holder for your selected pendants and
-            charms. Choose one, or keep your charms directly on the chain.
+            A connector works like a holder for your selected charms. Choose
+            one, or keep your charms directly on the chain.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {connectorItems.map((item) => {
@@ -731,7 +753,8 @@ export function NecklaceBuilder({
             })}
             {connectorItems.length === 0 ? (
               <p className="text-sm text-[#76504a]">
-                No active connector products are available yet.
+                Charms and add-ons are not available yet. Please check back
+                soon.
               </p>
             ) : null}
           </div>

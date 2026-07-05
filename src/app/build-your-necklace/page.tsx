@@ -16,7 +16,7 @@ export default async function BuildYourNecklacePage() {
       <SectionHeader
         eyebrow="Build Your Elara Piece"
         title="Create a piece that feels like you."
-        description="Choose your chain, pick your length, add your pendants or mini charms, and arrange them your way. Whether it's simple, playful, or statement-making, your piece is built around your style."
+        description="Choose your chain, pick your length, add your main charms or mini charms, and arrange them your way. Whether it's simple, playful, or statement-making, your piece is built around your style."
       />
       <div className="mt-8">
         <NecklaceBuilder chains={chains} builderItems={builderItems} />
