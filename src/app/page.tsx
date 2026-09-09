@@ -13,6 +13,8 @@ const instagramUrl =
   "https://www.instagram.com/elara.jewels.bcd?igsh=MTRoNTVjbDQyazltdw%3D%3D&utm_source=qr";
 const facebookUrl = "https://www.facebook.com/elarajwels";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const [collections, newArrivals, homepageHero] = await Promise.all([
     getActiveCollections(),

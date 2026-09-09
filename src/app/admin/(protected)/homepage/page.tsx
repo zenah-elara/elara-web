@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { HomepageImageSubmitButton } from "@/components/admin/homepage-image-submit-button";
+import { HomepageImageForm } from "@/components/admin/homepage-image-form";
 import { SectionHeader } from "@/components/section-header";
-import { updateHomepageHero } from "@/features/admin/site-assets/actions";
 import { getAdminSiteAssetByKey } from "@/features/admin/site-assets/queries";
 
 type AdminHomepagePageProps = {
@@ -42,59 +41,13 @@ export default async function AdminHomepagePage({
           </Link>
         ))}
       </div>
-      {params?.message ? (
-        <div className="mt-6 rounded-2xl border border-[#efd2bc] bg-[#fff7ef] p-4 text-sm font-medium text-[#76504a]">
-          {params.message}
-        </div>
-      ) : null}
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
-        <form
-          action={updateHomepageHero}
-          className="space-y-5 rounded-3xl boutique-card p-6"
-        >
-          <input
-            type="hidden"
-            name="existing_image_url"
-            value={heroAsset?.image_url ?? ""}
-          />
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">
-              Title / label
-            </span>
-            <input
-              name="title"
-              defaultValue={heroAsset?.title ?? "Homepage hero"}
-              className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">
-              Hero image
-            </span>
-            <input
-              name="image"
-              type="file"
-              accept="image/*"
-              className="mt-2 w-full text-sm text-[#76504a]"
-            />
-            <span className="mt-2 block text-xs font-medium text-[#8f4f68]">
-              Upload a JPG, PNG, or WebP image under 8 MB.
-            </span>
-          </label>
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">Alt text</span>
-            <input
-              name="alt_text"
-              defaultValue={heroAsset?.alt_text ?? ""}
-              className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none"
-            />
-          </label>
-          <label className="flex items-center gap-3 text-sm font-semibold text-cocoa">
-            <input name="clear_image" type="checkbox" className="h-4 w-4" />
-            Clear current image
-          </label>
-          <HomepageImageSubmitButton />
-        </form>
+        <HomepageImageForm
+          existingImageUrl={heroImageUrl}
+          title={heroAsset?.title}
+          altText={heroAsset?.alt_text}
+          initialMessage={params?.message}
+        />
         <aside className="h-fit rounded-3xl border border-[#efccd4] bg-white/82 p-5 shadow-sm">
           <p className="text-sm font-semibold text-cocoa">Current preview</p>
           <div className="mt-4 overflow-hidden rounded-2xl bg-[#fff1f6]">
