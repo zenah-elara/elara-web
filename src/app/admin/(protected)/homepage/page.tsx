@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HomepageImageSubmitButton } from "@/components/admin/homepage-image-submit-button";
 import { SectionHeader } from "@/components/section-header";
 import { updateHomepageHero } from "@/features/admin/site-assets/actions";
 import { getAdminSiteAssetByKey } from "@/features/admin/site-assets/queries";
@@ -14,6 +15,10 @@ export default async function AdminHomepagePage({
     searchParams,
     getAdminSiteAssetByKey("homepage_hero"),
   ]);
+  const heroImageUrl =
+    typeof heroAsset?.image_url === "string" && heroAsset.image_url.trim()
+      ? heroAsset.image_url.trim()
+      : null;
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
@@ -88,18 +93,16 @@ export default async function AdminHomepagePage({
             <input name="clear_image" type="checkbox" className="h-4 w-4" />
             Clear current image
           </label>
-          <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d38aa0] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(201,130,149,0.22)]">
-            Save homepage image
-          </button>
+          <HomepageImageSubmitButton />
         </form>
         <aside className="h-fit rounded-3xl border border-[#efccd4] bg-white/82 p-5 shadow-sm">
           <p className="text-sm font-semibold text-cocoa">Current preview</p>
           <div className="mt-4 overflow-hidden rounded-2xl bg-[#fff1f6]">
-            {heroAsset?.image_url ? (
+            {heroImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={heroAsset.image_url}
-                alt={heroAsset.alt_text ?? "Homepage hero preview"}
+                src={heroImageUrl}
+                alt={heroAsset?.alt_text ?? "Homepage hero preview"}
                 className="h-72 w-full object-cover"
               />
             ) : (

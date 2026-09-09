@@ -8,6 +8,11 @@ type HeroSectionProps = {
 };
 
 export function HeroSection({ heroImage }: HeroSectionProps) {
+  const safeHeroImageUrl =
+    typeof heroImage?.imageUrl === "string" && heroImage.imageUrl.trim()
+      ? heroImage.imageUrl.trim()
+      : null;
+
   return (
     <section className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_12%_8%,rgba(247,218,231,0.9)_0,rgba(247,218,231,0.36)_32%,transparent_58%),radial-gradient(circle_at_86%_10%,rgba(255,244,234,0.94)_0,rgba(255,244,234,0.42)_34%,transparent_60%),linear-gradient(135deg,#fff9f5_0%,#fde7ef_54%,#fff4ea_100%)]">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 md:py-16 lg:px-8">
@@ -38,12 +43,12 @@ export function HeroSection({ heroImage }: HeroSectionProps) {
             </div>
           </div>
           <div className="relative min-h-[390px] overflow-hidden rounded-[2.25rem] bg-[linear-gradient(135deg,#fffaf3_0%,#fde7ef_50%,#fff8f8_100%)] shadow-[0_24px_64px_rgba(211,140,157,0.22)] sm:min-h-[450px] lg:min-h-[520px]">
-          {heroImage?.imageUrl ? (
+          {safeHeroImageUrl ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={heroImage.imageUrl}
-                alt={heroImage.altText}
+                src={safeHeroImageUrl}
+                alt={heroImage?.altText || "elara. jewelry hero image"}
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#7A3F63]/12 via-transparent to-white/10" />

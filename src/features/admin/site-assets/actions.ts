@@ -7,9 +7,12 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 const siteAssetsBucket = "site-assets";
 const maxAssetImageBytes = 8 * 1024 * 1024;
+const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
 const imageValidationMessage = "Upload a JPG, PNG, or WebP image under 8 MB.";
+const storageSetupMessage =
+  "Homepage image storage is not fully set up yet. Please apply the required Supabase migration and bucket policies.";
 
-function redirectWithMessage(path: string, message: string) {
+function redirectWithMessage(path: string, message: string): never {
   redirect(`${path}?message=${encodeURIComponent(message)}`);
 }
 
@@ -18,7 +21,7 @@ async function getAuthorizedSupabase() {
   const supabase = await getSupabaseServerClient();
 
   if (!supabase) {
-    throw new Error("Supabase is not configured.");
+    redirectWithMessage("/admin/homepage", storageSetupMessage);
   }
 
   return supabase;
@@ -30,7 +33,10 @@ function getImageFile(formData: FormData) {
 }
 
 function validateImage(image: File) {
-  if (image.size > maxAssetImageBytes || !image.type.startsWith("image/")) {
+  if (
+    image.size > maxAssetImageBytes ||
+    !allowedImageTypes.includes(image.type)
+  ) {
     throw new Error(imageValidationMessage);
   }
 }
@@ -76,9 +82,12 @@ export async function updateHomepageHero(formData: FormData) {
       });
 
     if (uploadError) {
+      console.warn("[admin homepage] Hero image upload failed.", {
+        code: uploadError.name,
+      });
       redirectWithMessage(
         "/admin/homepage",
-        "Homepage image upload failed. Please check the site-assets storage bucket setup.",
+        storageSetupMessage,
       );
     }
 
@@ -101,7 +110,10 @@ export async function updateHomepageHero(formData: FormData) {
   );
 
   if (error) {
-    redirectWithMessage("/admin/homepage", "Homepage image could not be saved.");
+    console.warn("[admin homepage] Hero image record save failed.", {
+      code: error.code,
+    });
+    redirectWithMessage("/admin/homepage", storageSetupMessage);
   }
 
   revalidatePath("/");
