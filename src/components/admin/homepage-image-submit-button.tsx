@@ -1,10 +1,12 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
+type HomepageImageSubmitButtonProps = {
+  pending?: boolean;
+};
 
-export function HomepageImageSubmitButton() {
-  const { pending } = useFormStatus();
-
+export function HomepageImageSubmitButton({
+  pending = false,
+}: HomepageImageSubmitButtonProps) {
   return (
     <button
       type="submit"
