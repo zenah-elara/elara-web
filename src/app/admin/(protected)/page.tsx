@@ -79,8 +79,8 @@ export default async function AdminPage() {
   const lowStockProducts = products.filter(
     (product) => product.stock_quantity <= product.low_stock_threshold,
   ).length;
-  const activeCollections = collections.filter(
-    (collection) => collection.is_active,
+  const publishedCollections = collections.filter(
+    (collection) => collection.is_published,
   ).length;
 
   return (
@@ -264,7 +264,7 @@ export default async function AdminPage() {
           ))}
         </div>
         <p className="mt-4 text-sm text-[#76504a]">
-          Active collections: {activeCollections}
+          Published collections: {publishedCollections}
         </p>
       </section>
 

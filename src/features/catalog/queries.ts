@@ -23,6 +23,13 @@ const readyToShopProductTypes: NonNullable<CatalogProduct["productType"]>[] = [
 ];
 
 const bestSellerStatuses = ["confirmed", "paid", "packed", "delivered"];
+const builderProductTypes: NonNullable<CatalogProduct["productType"]>[] = [
+  "chain",
+  "charm",
+  "mini_charm",
+  "connector",
+  "pendant",
+];
 
 function warnFallback(queryName: string) {
   console.warn(`[catalog] ${queryName} failed; returning empty catalog.`);
@@ -117,7 +124,7 @@ function mapProduct(product: ProductWithRelations): CatalogProduct {
 
 async function fetchCollections(
   queryName: string,
-  options: { activeOnly?: boolean; slug?: string } = {},
+  options: { publishedOnly?: boolean; slug?: string } = {},
 ) {
   const supabase = getSupabasePublicServerClient();
 
@@ -128,12 +135,12 @@ async function fetchCollections(
 
   let query = supabase
     .from("collections")
-    .select("name, slug, description, image_url, image_alt_text")
+    .select("name, slug, description, image_url, image_alt_text, is_published")
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
-  if (options.activeOnly) {
-    query = query.eq("is_active", true);
+  if (options.publishedOnly) {
+    query = query.eq("is_published", true);
   }
 
   if (options.slug) {
@@ -160,6 +167,7 @@ async function fetchProducts(
     slug?: string;
     productTypes?: CatalogProduct["productType"][];
     inStockOnly?: boolean;
+    publicVisibility?: boolean;
   } = {},
 ) {
   const supabase = getSupabasePublicServerClient();
@@ -169,8 +177,8 @@ async function fetchProducts(
   }
 
   const collectionSelect = options.collectionSlug
-    ? "collections!inner(name, slug)"
-    : "collections(name, slug)";
+    ? "collections!inner(name, slug, is_published)"
+    : "collections(name, slug, is_published)";
 
   let query = supabase
     .from("products")
@@ -241,7 +249,18 @@ async function fetchProducts(
     return null;
   }
 
-  return (data as ProductWithRelations[]).map(mapProduct);
+  const products = data as ProductWithRelations[];
+  const visibleProducts = options.publicVisibility
+    ? products.filter(
+        (product) =>
+          (product.product_type !== undefined &&
+            builderProductTypes.includes(product.product_type)) ||
+          product.collections === null ||
+          product.collections.is_published,
+      )
+    : products;
+
+  return visibleProducts.map(mapProduct);
 }
 
 async function fetchProductSalesCounts(productIds: string[]) {
@@ -308,14 +327,16 @@ async function sortReadyToShopProducts(products: CatalogProduct[]) {
 }
 
 export async function getCollections() {
-  const collections = await fetchCollections("getCollections");
+  const collections = await fetchCollections("getCollections", {
+    publishedOnly: true,
+  });
 
   return collections ?? [];
 }
 
 export async function getActiveCollections() {
   const collections = await fetchCollections("getActiveCollections", {
-    activeOnly: true,
+    publishedOnly: true,
   });
 
   return collections ?? [];
@@ -323,7 +344,7 @@ export async function getActiveCollections() {
 
 export async function getCollectionBySlug(slug: string) {
   const collections = await fetchCollections("getCollectionBySlug", {
-    activeOnly: true,
+    publishedOnly: true,
     slug,
   });
 
@@ -335,7 +356,7 @@ export async function getCollectionBySlug(slug: string) {
 }
 
 export async function getProducts() {
-  const products = await fetchProducts("getProducts");
+  const products = await fetchProducts("getProducts", { publicVisibility: true });
 
   return products ?? [];
 }
@@ -344,6 +365,7 @@ export async function getActiveProducts() {
   const products = await fetchProducts("getActiveProducts", {
     activeOnly: true,
     inStockOnly: true,
+    publicVisibility: true,
   });
 
   return products ?? [];
@@ -353,6 +375,7 @@ export async function getReadyToShopProducts() {
   const products = await fetchProducts("getReadyToShopProducts", {
     activeOnly: true,
     productTypes: readyToShopProductTypes,
+    publicVisibility: true,
   });
 
   return products ? sortReadyToShopProducts(products) : [];
@@ -363,6 +386,7 @@ export async function getFeaturedProducts() {
     activeOnly: true,
     featuredOnly: true,
     inStockOnly: true,
+    publicVisibility: true,
   });
 
   return products ?? [];
@@ -373,6 +397,7 @@ export async function getNewArrivalProducts() {
     activeOnly: true,
     newArrivalOnly: true,
     inStockOnly: true,
+    publicVisibility: true,
   });
 
   return products ?? [];
@@ -388,6 +413,7 @@ export async function getProductsByCollectionSlug(slug: string) {
       activeOnly: true,
       inStockOnly: true,
       collectionSlug: slug,
+      publicVisibility: true,
     })) ?? []
   );
 }
@@ -397,6 +423,7 @@ export async function getProductBySlug(slug: string) {
     activeOnly: true,
     slug,
     inStockOnly: true,
+    publicVisibility: true,
   });
 
   if (products) {

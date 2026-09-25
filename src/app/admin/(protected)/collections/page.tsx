@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Button } from "@/components/button";
+import {
+  CollectionPublishControl,
+  PublishAllCollectionsControl,
+} from "@/components/admin/collection-publishing-controls";
 import { SectionHeader } from "@/components/section-header";
-import { toggleCollectionActive } from "@/features/admin/catalog/actions";
 import { getAdminCollections } from "@/features/admin/catalog/queries";
 
 type CollectionsPageProps = {
@@ -22,9 +25,12 @@ export default async function AdminCollectionsPage({
         <SectionHeader
           eyebrow="Admin"
           title="Collections"
-          description="Create, edit, activate, and deactivate storefront collections."
+          description="Prepare collections in Draft, then publish them when they are ready for customers."
         />
-        <Button href="/admin/collections/new">Add Collection</Button>
+        <div className="flex flex-wrap gap-3">
+          <PublishAllCollectionsControl />
+          <Button href="/admin/collections/new">Add Collection</Button>
+        </div>
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
         {[
@@ -85,7 +91,27 @@ export default async function AdminCollectionsPage({
               </p>
             </div>
             <span>{collection.slug}</span>
-            <span>{collection.is_active ? "Active" : "Inactive"}</span>
+            <div>
+              <span
+                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                  collection.is_published
+                    ? "bg-[#edf7ef] text-[#447451]"
+                    : "bg-[#fff1f6] text-[#8f4f68]"
+                }`}
+              >
+                {collection.is_published ? "Published" : "Draft"}
+              </span>
+              <p className="mt-1 text-xs text-[#8f5574]">
+                {collection.is_published
+                  ? "Visible to customers"
+                  : "Hidden from customers"}
+              </p>
+              {collection.is_published && collection.published_at ? (
+                <p className="mt-1 text-xs text-[#9d746d]">
+                  Published {new Date(collection.published_at).toLocaleDateString()}
+                </p>
+              ) : null}
+            </div>
             <span>{collection.sort_order ?? 0}</span>
             <div className="flex flex-wrap gap-2">
               <Link
@@ -94,17 +120,10 @@ export default async function AdminCollectionsPage({
               >
                 Edit
               </Link>
-              <form
-                action={toggleCollectionActive.bind(
-                  null,
-                  collection.id,
-                  !collection.is_active,
-                )}
-              >
-                <button className="rounded-full bg-[#fff1f6] px-3 py-1 text-xs font-semibold text-rose">
-                  {collection.is_active ? "Deactivate" : "Activate"}
-                </button>
-              </form>
+              <CollectionPublishControl
+                collectionId={collection.id}
+                isPublished={collection.is_published}
+              />
             </div>
           </div>
         ))}

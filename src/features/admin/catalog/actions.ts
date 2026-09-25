@@ -19,6 +19,12 @@ const maxProductImageBytes = 8 * 1024 * 1024;
 const imageValidationMessage = "Upload a JPG, PNG, or WebP image under 8 MB.";
 const imageStorageSetupMessage =
   "Image upload failed. Please check the product-images storage bucket setup.";
+const readyCollectionProductTypes = [
+  "regular_product",
+  "necklace",
+  "bracelet",
+  "ring",
+] as const;
 
 function redirectWithMessage(path: string, message: string): never {
   redirect(`${path}?message=${encodeURIComponent(message)}`);
@@ -119,9 +125,13 @@ function revalidateStorefrontCatalog(slug?: string | null) {
 export async function createCollection(formData: FormData) {
   const supabase = await getAuthorizedSupabase();
   const payload = parseCollectionFormData(formData);
+  const collectionPayload = {
+    ...payload,
+    published_at: payload.is_published ? new Date().toISOString() : null,
+  };
   const { data, error } = await supabase
     .from("collections")
-    .insert(payload as never)
+    .insert(collectionPayload as never)
     .select("id, slug")
     .single();
 
@@ -152,11 +162,22 @@ export async function updateCollection(
   const supabase = await getAuthorizedSupabase();
   const { data: previousCollection } = await supabase
     .from("collections")
-    .select("slug")
+    .select("slug, is_published, published_at")
     .eq("id", collectionId)
     .maybeSingle();
   const payload = parseCollectionFormData(formData);
   const updatePayload: Record<string, unknown> = { ...payload };
+  const previous = previousCollection as {
+    slug?: string;
+    is_published?: boolean;
+    published_at?: string | null;
+  } | null;
+
+  updatePayload.published_at = payload.is_published
+    ? previous?.is_published
+      ? previous.published_at
+      : new Date().toISOString()
+    : previous?.published_at ?? null;
 
   if (formData.get("clear_collection_image") === "on") {
     updatePayload.image_url = null;
@@ -186,7 +207,7 @@ export async function updateCollection(
   revalidatePath("/admin/collections");
   revalidatePath(`/admin/collections/${collectionId}/edit`);
   revalidateStorefrontCatalog(
-    (previousCollection as { slug?: string } | null)?.slug ?? payload.slug,
+    previous?.slug ?? payload.slug,
   );
   revalidateStorefrontCatalog();
   redirectWithMessage(
@@ -278,26 +299,115 @@ export async function uploadCollectionImage(
   }
 }
 
-export async function toggleCollectionActive(
+export async function setCollectionPublished(
   collectionId: string,
-  isActive: boolean,
+  isPublished: boolean,
 ) {
   const supabase = await getAuthorizedSupabase();
   const { error } = await supabase
     .from("collections")
-    .update({ is_active: isActive } as never)
+    .update({
+      is_published: isPublished,
+      ...(isPublished ? { published_at: new Date().toISOString() } : {}),
+    } as never)
     .eq("id", collectionId);
 
   if (error) {
-    redirectWithMessage("/admin/collections", "Collection status could not change.");
+    redirectWithMessage(
+      "/admin/collections",
+      "Collection publishing status could not change.",
+    );
   }
 
   revalidatePath("/admin/collections");
   revalidateStorefrontCatalog();
   redirectWithMessage(
     "/admin/collections",
-    isActive ? "Collection activated." : "Collection deactivated.",
+    isPublished ? "Collection published." : "Collection moved to Draft.",
   );
+}
+
+export async function publishAllReadyCollections() {
+  const supabase = await getAuthorizedSupabase();
+  const { data: draftCollections, error: collectionsError } = await supabase
+    .from("collections")
+    .select("id, name, slug")
+    .eq("is_published", false);
+
+  if (collectionsError || !draftCollections) {
+    redirectWithMessage(
+      "/admin/collections",
+      "Ready collections could not be checked.",
+    );
+  }
+
+  const drafts = draftCollections as unknown as {
+    id: string;
+    name: string;
+    slug: string;
+  }[];
+  const draftIds = drafts.map((collection) => collection.id);
+
+  if (draftIds.length === 0) {
+    redirectWithMessage("/admin/collections", "No Draft collections to publish.");
+  }
+
+  const { data: activeProducts, error: productsError } = await supabase
+    .from("products")
+    .select("collection_id")
+    .eq("is_active", true)
+    .in("product_type", [...readyCollectionProductTypes])
+    .in("collection_id", draftIds);
+
+  if (productsError || !activeProducts) {
+    redirectWithMessage(
+      "/admin/collections",
+      "Collection readiness could not be checked.",
+    );
+  }
+
+  const products = activeProducts as unknown as { collection_id: string | null }[];
+  const collectionIdsWithProducts = new Set(
+    products
+      .map((product) => product.collection_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const readyIds = drafts
+    .filter(
+      (collection) =>
+        collection.name.trim() &&
+        collection.slug.trim() &&
+        collectionIdsWithProducts.has(collection.id),
+    )
+    .map((collection) => collection.id);
+  const skippedCount = drafts.length - readyIds.length;
+
+  if (readyIds.length > 0) {
+    const { error } = await supabase
+      .from("collections")
+      .update({
+        is_published: true,
+        published_at: new Date().toISOString(),
+      } as never)
+      .in("id", readyIds);
+
+    if (error) {
+      redirectWithMessage(
+        "/admin/collections",
+        "Ready collections could not be published.",
+      );
+    }
+  }
+
+  revalidatePath("/admin/collections");
+  revalidateStorefrontCatalog();
+
+  const publishedLabel = `${readyIds.length} ${readyIds.length === 1 ? "collection" : "collections"} published.`;
+  const skippedLabel = skippedCount
+    ? ` ${skippedCount} ${skippedCount === 1 ? "collection was" : "collections were"} skipped because ${skippedCount === 1 ? "it has" : "they have"} no active ready-to-shop products.`
+    : "";
+
+  redirectWithMessage("/admin/collections", `${publishedLabel}${skippedLabel}`);
 }
 
 export async function deleteCollection(collectionId: string, formData: FormData) {

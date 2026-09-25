@@ -47,6 +47,7 @@ export type ProductWithRelations = {
   collections: {
     name: string;
     slug: string;
+    is_published: boolean;
   } | null;
   product_images:
     | {

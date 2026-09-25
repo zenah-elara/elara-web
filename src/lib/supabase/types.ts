@@ -17,6 +17,8 @@ export type Database = {
           description: string | null;
           sort_order: number | null;
           is_active: boolean | null;
+          is_published: boolean;
+          published_at: string | null;
           image_url: string | null;
           image_alt_text: string | null;
           created_at: string | null;
@@ -29,6 +31,8 @@ export type Database = {
           description?: string | null;
           sort_order?: number | null;
           is_active?: boolean | null;
+          is_published?: boolean;
+          published_at?: string | null;
           image_url?: string | null;
           image_alt_text?: string | null;
           created_at?: string | null;
@@ -41,6 +45,8 @@ export type Database = {
           description?: string | null;
           sort_order?: number | null;
           is_active?: boolean | null;
+          is_published?: boolean;
+          published_at?: string | null;
           image_url?: string | null;
           image_alt_text?: string | null;
           created_at?: string | null;

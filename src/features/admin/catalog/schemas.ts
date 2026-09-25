@@ -128,7 +128,7 @@ export function parseCollectionFormData(formData: FormData): CollectionInsert {
     slug,
     description: textValue(formData, "description"),
     sort_order: numberValue(formData, "sort_order"),
-    is_active: booleanValue(formData, "is_active"),
+    is_published: formData.get("publication_status") === "published",
     image_alt_text: textValue(formData, "image_alt_text"),
   };
 }

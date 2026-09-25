@@ -27,7 +27,7 @@ export default async function EditCollectionPage({
       <SectionHeader
         eyebrow="Admin"
         title={`Edit ${collection.name}`}
-        description="Update collection details and storefront visibility."
+        description="Update collection details and choose when customers can see it."
       />
       {query?.message ? (
         <div className="mt-6 rounded-2xl border border-[#efd2bc] bg-[#fff7ef] p-4 text-sm font-medium text-[#76504a]">
@@ -107,10 +107,43 @@ export default async function EditCollectionPage({
             Clear current thumbnail
           </label>
         </div>
-        <label className="flex items-center gap-3 text-sm font-semibold text-cocoa">
-          <input name="is_active" type="checkbox" defaultChecked={Boolean(collection.is_active)} className="h-4 w-4" />
-          Active
-        </label>
+        <fieldset className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
+          <legend className="px-1 text-sm font-semibold text-cocoa">
+            Publishing
+          </legend>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#efccd4] bg-white p-4">
+              <input
+                name="publication_status"
+                type="radio"
+                value="draft"
+                defaultChecked={!collection.is_published}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-[#7A3F63]">Draft</span>
+                <span className="mt-1 block text-xs leading-5 text-[#8f5574]">
+                  Saved in Admin but hidden from customers.
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#efccd4] bg-white p-4">
+              <input
+                name="publication_status"
+                type="radio"
+                value="published"
+                defaultChecked={collection.is_published}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-[#7A3F63]">Published</span>
+                <span className="mt-1 block text-xs leading-5 text-[#8f5574]">
+                  Visible to customers.
+                </span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
         <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d38aa0] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(201,130,149,0.22)]">
           Save collection
         </button>
