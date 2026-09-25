@@ -40,6 +40,8 @@ export type Product = {
   isNewArrival: boolean;
   materialDetails?: string;
   careInstructions?: string;
+  hasVariants?: boolean;
+  variants?: ProductVariant[];
 };
 
 export type ProductImage = {
@@ -48,6 +50,18 @@ export type ProductImage = {
   altText?: string;
   isPrimary?: boolean;
   sortOrder?: number | null;
+};
+
+export type ProductVariant = {
+  id: string;
+  finish?: string | null;
+  color?: string | null;
+  stock: number;
+  priceOverride?: number | null;
+  materialTypeOverride?: "gold_plated" | "stainless_steel" | null;
+  isActive: boolean;
+  sortOrder: number;
+  images: ProductImage[];
 };
 
 export const collections: Collection[] = [

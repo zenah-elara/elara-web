@@ -42,6 +42,7 @@ export type ProductWithRelations = {
   builder_price_tier: CatalogProduct["builderPriceTier"] | null;
   stock_quantity: number;
   low_stock_threshold: number | null;
+  has_variants: boolean;
   is_featured: boolean | null;
   is_new_arrival: boolean | null;
   collections: {
@@ -49,6 +50,27 @@ export type ProductWithRelations = {
     slug: string;
     is_published: boolean;
   } | null;
+  product_variants:
+    | {
+        id: string;
+        finish: string | null;
+        color: string | null;
+        stock_quantity: number;
+        price_override: number | string | null;
+        material_type_override: "gold_plated" | "stainless_steel" | null;
+        is_active: boolean;
+        sort_order: number;
+        product_images:
+          | {
+              id?: string;
+              image_url: string;
+              alt_text: string | null;
+              is_primary: boolean | null;
+              sort_order: number | null;
+            }[]
+          | null;
+      }[]
+    | null;
   product_images:
     | {
         image_url: string;
@@ -56,6 +78,7 @@ export type ProductWithRelations = {
         is_primary: boolean | null;
         sort_order: number | null;
         id?: string;
+        variant_id?: string | null;
       }[]
     | null;
   product_tags:

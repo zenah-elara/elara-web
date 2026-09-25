@@ -154,6 +154,7 @@ async function getAllAdminOrders(): Promise<AdminOrder[]> {
         order_items(
           *,
           products(name, slug, stock_quantity, product_type, product_images(*)),
+          product_variants(material_type_override, product_images(*)),
           custom_necklace_items(
             *,
             custom_necklace_charms(*)
@@ -192,6 +193,7 @@ export async function getAdminOrderById(
         order_items(
           *,
           products(name, slug, stock_quantity, product_type, product_images(*)),
+          product_variants(material_type_override, product_images(*)),
           custom_necklace_items(
             *,
             custom_necklace_charms(

@@ -16,6 +16,7 @@ export function ProductImageGallery({
   const [activeIndex, setActiveIndex] = useState(0);
   const activeImage = images[activeIndex];
 
+
   if (images.length === 0 || !activeImage) {
     return (
       <ImagePlaceholder

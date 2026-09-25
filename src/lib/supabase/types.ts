@@ -212,6 +212,7 @@ export type Database = {
           material_details: string | null;
           care_instructions: string | null;
           stock_quantity: number;
+          has_variants: boolean;
           low_stock_threshold: number;
           is_active: boolean | null;
           is_featured: boolean | null;
@@ -260,6 +261,7 @@ export type Database = {
           material_details?: string | null;
           care_instructions?: string | null;
           stock_quantity?: number;
+          has_variants?: boolean;
           low_stock_threshold?: number;
           is_active?: boolean | null;
           is_featured?: boolean | null;
@@ -308,6 +310,7 @@ export type Database = {
           material_details?: string | null;
           care_instructions?: string | null;
           stock_quantity?: number;
+          has_variants?: boolean;
           low_stock_threshold?: number;
           is_active?: boolean | null;
           is_featured?: boolean | null;
@@ -322,6 +325,7 @@ export type Database = {
         Row: {
           id: string;
           product_id: string | null;
+          variant_id: string | null;
           image_url: string;
           alt_text: string | null;
           sort_order: number | null;
@@ -331,6 +335,7 @@ export type Database = {
         Insert: {
           id?: string;
           product_id?: string | null;
+          variant_id?: string | null;
           image_url: string;
           alt_text?: string | null;
           sort_order?: number | null;
@@ -340,11 +345,54 @@ export type Database = {
         Update: {
           id?: string;
           product_id?: string | null;
+          variant_id?: string | null;
           image_url?: string;
           alt_text?: string | null;
           sort_order?: number | null;
           is_primary?: boolean | null;
           created_at?: string | null;
+        };
+        Relationships: [];
+      };
+      product_variants: {
+        Row: {
+          id: string;
+          product_id: string;
+          finish: string | null;
+          color: string | null;
+          stock_quantity: number;
+          price_override: number | null;
+          material_type_override: "gold_plated" | "stainless_steel" | null;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          finish?: string | null;
+          color?: string | null;
+          stock_quantity?: number;
+          price_override?: number | null;
+          material_type_override?: "gold_plated" | "stainless_steel" | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          product_id?: string;
+          finish?: string | null;
+          color?: string | null;
+          stock_quantity?: number;
+          price_override?: number | null;
+          material_type_override?: "gold_plated" | "stainless_steel" | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -470,6 +518,9 @@ export type Database = {
           id: string;
           order_id: string | null;
           product_id: string | null;
+          variant_id: string | null;
+          selected_finish: string | null;
+          selected_color: string | null;
           item_type:
             | "regular_product"
             | "custom_necklace"
@@ -493,6 +544,9 @@ export type Database = {
           id?: string;
           order_id?: string | null;
           product_id?: string | null;
+          variant_id?: string | null;
+          selected_finish?: string | null;
+          selected_color?: string | null;
           item_type?:
             | "regular_product"
             | "custom_necklace"
@@ -516,6 +570,9 @@ export type Database = {
           id?: string;
           order_id?: string | null;
           product_id?: string | null;
+          variant_id?: string | null;
+          selected_finish?: string | null;
+          selected_color?: string | null;
           item_type?:
             | "regular_product"
             | "custom_necklace"
@@ -607,6 +664,7 @@ export type Database = {
         Row: {
           id: string;
           product_id: string | null;
+          variant_id: string | null;
           order_id: string | null;
           movement_type:
             | "manual_adjustment"
@@ -622,6 +680,7 @@ export type Database = {
         Insert: {
           id?: string;
           product_id?: string | null;
+          variant_id?: string | null;
           order_id?: string | null;
           movement_type:
             | "manual_adjustment"
@@ -637,6 +696,7 @@ export type Database = {
         Update: {
           id?: string;
           product_id?: string | null;
+          variant_id?: string | null;
           order_id?: string | null;
           movement_type?:
             | "manual_adjustment"

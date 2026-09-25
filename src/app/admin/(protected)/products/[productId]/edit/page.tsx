@@ -4,6 +4,7 @@ import {
   ProductSetupGuide,
 } from "@/components/admin/product-setup-fields";
 import { ProductSizeLengthFields } from "@/components/admin/product-size-length-fields";
+import { ProductVariantsFields } from "@/components/admin/product-variants-fields";
 import { SectionHeader } from "@/components/section-header";
 import {
   deleteProductImage,
@@ -37,7 +38,7 @@ export default async function EditProductPage({
   }
 
   const tagValue = product.product_tags?.map((tag) => tag.tag).join(", ") ?? "";
-  const images = [...(product.product_images ?? [])].sort(
+  const images = [...(product.product_images ?? [])].filter((image) => !image.variant_id).sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
   );
   const selectedFinishType =
@@ -183,6 +184,28 @@ export default async function EditProductPage({
           defaultFixedSizeNote={product.fixed_size_note}
           defaultCustomLengthLabel={product.custom_length_label}
           defaultCustomLengthHelpText={product.custom_length_help_text}
+        />
+
+        <ProductVariantsFields
+          defaultEnabled={product.has_variants}
+          productName={product.name}
+          basePrice={Number(product.price)}
+          defaultVariants={(product.product_variants ?? []).map((variant) => ({
+            clientKey: variant.id,
+            id: variant.id,
+            finish: variant.finish,
+            color: variant.color,
+            stockQuantity: variant.stock_quantity,
+            priceOverride: variant.price_override === null ? null : Number(variant.price_override),
+            materialTypeOverride: variant.material_type_override,
+            isActive: variant.is_active,
+            sortOrder: variant.sort_order,
+            images: (variant.product_images ?? []).map((image) => ({
+              id: image.id,
+              imageUrl: image.image_url,
+              altText: image.alt_text,
+            })),
+          }))}
         />
 
         <div className="grid gap-5 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5 md:grid-cols-2">

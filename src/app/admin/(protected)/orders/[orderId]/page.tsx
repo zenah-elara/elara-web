@@ -191,7 +191,10 @@ export default async function AdminOrderDetailPage({
             ) : null}
             {(order.order_items ?? []).map((item) => {
               if (item.item_type !== "custom_necklace") {
-                const primaryImage = getPrimaryImage(item.products);
+                const variantImage =
+                  item.product_variants?.product_images?.find((image) => image.is_primary) ??
+                  item.product_variants?.product_images?.[0];
+                const primaryImage = variantImage ?? getPrimaryImage(item.products);
 
                 return (
                   <div
@@ -211,7 +214,7 @@ export default async function AdminOrderDetailPage({
                           "product"}
                       </p>
                       <div className="mt-2">
-                        <FinishBadge finishType={item.products?.finish_type} />
+                        <FinishBadge finishType={item.product_variants?.material_type_override ?? item.products?.finish_type} />
                       </div>
                       <div className="mt-3 grid gap-2 text-sm text-[#76504a] sm:grid-cols-3">
                         <span>Qty: {item.quantity}</span>
@@ -222,6 +225,12 @@ export default async function AdminOrderDetailPage({
                         <p className="mt-2 text-xs font-semibold text-[#7A3F63]">
                           {item.selected_size_label ?? "Size / length"}: {item.selected_size}
                         </p>
+                      ) : null}
+                      {item.selected_finish ? (
+                        <p className="mt-2 text-xs font-semibold text-[#7A3F63]">Finish: {item.selected_finish}</p>
+                      ) : null}
+                      {item.selected_color ? (
+                        <p className="mt-2 text-xs font-semibold text-[#7A3F63]">Color: {item.selected_color}</p>
                       ) : null}
                       {item.selected_custom_length ? (
                         <p className="mt-2 text-xs font-semibold text-[#7A3F63]">
@@ -395,6 +404,12 @@ export default async function AdminOrderDetailPage({
                       <p className="mt-1 text-xs font-semibold text-[#7A3F63]">
                         {item.selected_size_label ?? "Size / length"}: {item.selected_size}
                       </p>
+                    ) : null}
+                    {item.selected_finish ? (
+                      <p className="mt-1 text-xs font-semibold text-[#7A3F63]">Finish: {item.selected_finish}</p>
+                    ) : null}
+                    {item.selected_color ? (
+                      <p className="mt-1 text-xs font-semibold text-[#7A3F63]">Color: {item.selected_color}</p>
                     ) : null}
                     {item.selected_custom_length ? (
                       <p className="mt-1 text-xs font-semibold text-[#7A3F63]">

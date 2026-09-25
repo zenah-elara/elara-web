@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import type { CartInput } from "@/features/cart/types";
+import type { ProductVariant } from "@/lib/data";
 
 type ProductPurchaseOptionsProps = {
   item: Omit<
@@ -20,6 +21,8 @@ type ProductPurchaseOptionsProps = {
   customLengthLabel?: string | null;
   customLengthHelpText?: string | null;
   fixedSizeNote?: string | null;
+  variants?: ProductVariant[];
+  onVariantChange?: (variant: ProductVariant | null) => void;
 };
 
 export function ProductPurchaseOptions({
@@ -31,6 +34,8 @@ export function ProductPurchaseOptions({
   customLengthLabel,
   customLengthHelpText,
   fixedSizeNote,
+  variants = [],
+  onVariantChange,
 }: ProductPurchaseOptionsProps) {
   const availableOptions = useMemo(
     () => sizeOptions.map((option) => option.trim()).filter(Boolean),
@@ -52,13 +57,59 @@ export function ProductPurchaseOptions({
     requiresPreset && availableOptions.length === 1 ? availableOptions[0] : "",
   );
   const [customLength, setCustomLength] = useState("");
+  const finishOptions = useMemo(
+    () => [...new Set(variants.map((variant) => variant.finish).filter((value): value is string => Boolean(value)))],
+    [variants],
+  );
+  const colorOptions = useMemo(
+    () => [...new Set(variants.map((variant) => variant.color).filter((value): value is string => Boolean(value)))],
+    [variants],
+  );
+  const [selectedFinish, setSelectedFinish] = useState(finishOptions.length === 1 ? finishOptions[0] : "");
+  const [selectedColor, setSelectedColor] = useState(colorOptions.length === 1 ? colorOptions[0] : "");
+  const selectedVariant = variants.find(
+    (variant) =>
+      (!variant.finish || variant.finish === selectedFinish) &&
+      (!variant.color || variant.color === selectedColor),
+  ) ?? null;
+
+  useEffect(() => {
+    onVariantChange?.(selectedVariant);
+  }, [onVariantChange, selectedVariant]);
   const trimmedCustomLength = customLength.trim();
   const isMissingRequiredValue =
     (requiresPreset && !selectedSize) ||
-    (requiresCustomLength && !trimmedCustomLength);
+    (requiresCustomLength && !trimmedCustomLength) ||
+    (finishOptions.length > 0 && !selectedFinish) ||
+    (colorOptions.length > 0 && !selectedColor) ||
+    (variants.length > 0 && (!selectedVariant || selectedVariant.stock <= 0));
 
   return (
     <div className="space-y-4">
+      {finishOptions.length > 0 ? (
+        <div>
+          <p className="text-sm font-semibold text-[#7A3F63]">Finish</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {finishOptions.map((finish) => (
+              <button key={finish} type="button" onClick={() => setSelectedFinish(finish)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedFinish === finish ? "border-[#d38aa0] bg-[#d38aa0] text-white" : "border-[#efccd4] bg-[#fffaf8] text-[#7A3F63]"}`}>
+                {finish}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {colorOptions.length > 0 ? (
+        <div>
+          <p className="text-sm font-semibold text-[#7A3F63]">Color</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {colorOptions.map((color) => (
+              <button key={color} type="button" onClick={() => setSelectedColor(color)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedColor === color ? "border-[#d38aa0] bg-[#d38aa0] text-white" : "border-[#efccd4] bg-[#fffaf8] text-[#7A3F63]"}`}>
+                {color}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {requiresPreset ? (
         <label className="block">
           <span className="text-sm font-semibold text-[#7A3F63]">{label}</span>
@@ -106,7 +157,14 @@ export function ProductPurchaseOptions({
       <AddToCartButton
         item={{
           ...item,
-          cartItemId: `${item.productId}${selectedSize ? `-${selectedSize}` : ""}${
+          variantId: selectedVariant?.id ?? null,
+          selectedFinish: selectedVariant?.finish ?? null,
+          selectedColor: selectedVariant?.color ?? null,
+          unitPrice: selectedVariant?.priceOverride ?? item.unitPrice,
+          stockQuantity: selectedVariant?.stock ?? item.stockQuantity,
+          finishType: selectedVariant?.materialTypeOverride ?? item.finishType,
+          imageUrl: selectedVariant?.images[0]?.imageUrl ?? item.imageUrl,
+          cartItemId: `${item.productId}${selectedVariant ? `-${selectedVariant.id}` : ""}${selectedSize ? `-${selectedSize}` : ""}${
             trimmedCustomLength ? `-${trimmedCustomLength}` : ""
           }`,
           selectedSize: selectedSize || null,
@@ -119,11 +177,19 @@ export function ProductPurchaseOptions({
         disabled={isMissingRequiredValue}
         className="min-h-11 w-full px-5"
         label={
-          requiresPreset && !selectedSize
-            ? `Choose ${label.toLowerCase()}`
-            : requiresCustomLength && !trimmedCustomLength
-              ? "Enter preferred length"
-            : "Add to Cart"
+          finishOptions.length > 0 && !selectedFinish
+            ? "Choose a finish"
+            : colorOptions.length > 0 && !selectedColor
+              ? "Choose a color"
+              : variants.length > 0 && !selectedVariant
+                ? "Combination unavailable"
+                : variants.length > 0 && selectedVariant?.stock === 0
+                  ? "Out of stock"
+                  : requiresPreset && !selectedSize
+                    ? `Choose ${label.toLowerCase()}`
+                    : requiresCustomLength && !trimmedCustomLength
+                      ? "Enter preferred length"
+                      : "Add to Cart"
         }
       />
     </div>

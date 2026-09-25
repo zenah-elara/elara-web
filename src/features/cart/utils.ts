@@ -250,6 +250,7 @@ function normalizeStoredCartItem(value: unknown, index: number): CartItem {
   }
 
   const productId = stringValue(item.productId ?? item.id ?? item.product_id);
+  const variantId = nullableStringValue(item.variantId ?? item.variant_id);
   const selectedSize = nullableStringValue(item.selectedSize ?? item.selected_size);
   const customLength = nullableStringValue(
     item.customLength ?? item.custom_length ?? item.selected_custom_length,
@@ -259,7 +260,7 @@ function normalizeStoredCartItem(value: unknown, index: number): CartItem {
     cartItemId:
       stringValue(item.cartItemId) ||
       (productId
-        ? `${productId}${selectedSize ? `-${selectedSize}` : ""}${
+        ? `${productId}${variantId ? `-${variantId}` : ""}${selectedSize ? `-${selectedSize}` : ""}${
             customLength ? `-${customLength}` : ""
           }`
         : `invalid-cart-item-${index}`),
@@ -279,6 +280,9 @@ function normalizeStoredCartItem(value: unknown, index: number): CartItem {
         ? undefined
         : numberValue(item.lowStockThreshold ?? item.low_stock_threshold),
     finishType: finishTypeValue(item.finishType),
+    variantId,
+    selectedFinish: nullableStringValue(item.selectedFinish ?? item.selected_finish),
+    selectedColor: nullableStringValue(item.selectedColor ?? item.selected_color),
     selectedSize,
     sizeLabel: nullableStringValue(item.sizeLabel ?? item.size_label),
     customLength,
@@ -324,6 +328,7 @@ export function addCartItem(input: CartInput) {
     (item): item is RegularCartItem =>
       isRegularCartItem(item) &&
       item.productId === input.productId &&
+      (item.variantId ?? null) === (input.variantId ?? null) &&
       (item.selectedSize ?? null) === (input.selectedSize ?? null) &&
       (item.customLength ?? null) === (input.customLength ?? null),
   );
@@ -338,7 +343,7 @@ export function addCartItem(input: CartInput) {
       ...input,
       cartItemId:
         input.cartItemId ??
-        `${input.productId}${input.selectedSize ? `-${input.selectedSize}` : ""}${
+        `${input.productId}${input.variantId ? `-${input.variantId}` : ""}${input.selectedSize ? `-${input.selectedSize}` : ""}${
           input.customLength ? `-${input.customLength}` : ""
         }`,
       quantity: normalizeQuantity(input.quantity ?? 1, input.stockQuantity),

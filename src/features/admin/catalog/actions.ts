@@ -12,10 +12,22 @@ import {
 } from "./schemas";
 
 type ProductImageRow = Database["public"]["Tables"]["product_images"]["Row"];
+type VariantFormValue = {
+  clientKey: string;
+  id?: string;
+  finish: string | null;
+  color: string | null;
+  stockQuantity: number;
+  priceOverride: number | null;
+  materialTypeOverride: "gold_plated" | "stainless_steel" | null;
+  isActive: boolean;
+  sortOrder: number;
+};
 
 const productImagesBucket = "product-images";
 const collectionImagesBucket = "collection-images";
 const maxProductImageBytes = 8 * 1024 * 1024;
+const allowedProductImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const imageValidationMessage = "Upload a JPG, PNG, or WebP image under 8 MB.";
 const imageStorageSetupMessage =
   "Image upload failed. Please check the product-images storage bucket setup.";
@@ -82,8 +94,117 @@ function getSingleImageFile(formData: FormData, key: string) {
   return image instanceof File && image.size > 0 ? image : null;
 }
 
+function parseVariantFormValues(formData: FormData): VariantFormValue[] {
+  try {
+    const parsed = JSON.parse(String(formData.get("variants_json") ?? "[]"));
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter((value): value is VariantFormValue =>
+      Boolean(
+        value &&
+        typeof value.clientKey === "string" &&
+        (typeof value.finish === "string" || value.finish === null) &&
+        (typeof value.color === "string" || value.color === null) &&
+        (value.finish?.trim() || value.color?.trim()) &&
+        Number.isFinite(Number(value.stockQuantity)),
+      ),
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function syncProductVariants(productId: string, formData: FormData) {
+  const supabase = await getAuthorizedSupabase();
+  const enabled = formData.get("has_variants") === "on";
+  const values = enabled ? parseVariantFormValues(formData) : [];
+  const retainedIds: string[] = [];
+
+  if (enabled && values.length === 0) {
+    throw new Error("Add at least one Finish or Color option before enabling variants.");
+  }
+
+  for (const [index, value] of values.entries()) {
+    const payload = {
+      product_id: productId,
+      finish: value.finish?.trim() || null,
+      color: value.color?.trim() || null,
+      stock_quantity: Math.max(0, Math.floor(Number(value.stockQuantity))),
+      price_override:
+        value.priceOverride === null || value.priceOverride === undefined
+          ? null
+          : Math.max(0, Number(value.priceOverride)),
+      material_type_override: value.materialTypeOverride || null,
+      is_active: Boolean(value.isActive),
+      sort_order: Number.isFinite(value.sortOrder) ? value.sortOrder : index,
+    };
+    let variantId: string;
+
+    if (value.id) {
+      const { data, error } = await supabase
+          .from("product_variants")
+          .update(payload as never)
+          .eq("id", value.id)
+          .eq("product_id", productId)
+          .select("id")
+          .single();
+      if (error || !data) throw new Error("Variant combinations could not be saved.");
+      variantId = (data as { id: string }).id;
+    } else {
+      const { data, error } = await supabase
+          .from("product_variants")
+          .insert(payload as never)
+          .select("id")
+          .single();
+      if (error || !data) throw new Error("Variant combinations could not be saved.");
+      variantId = (data as { id: string }).id;
+    }
+    retainedIds.push(variantId);
+    const files = formData
+      .getAll(`variant_images_${value.clientKey}`)
+      .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+    for (const [imageIndex, image] of files.entries()) {
+      validateProductImage(image);
+      const filePath = `products/${productId}/variants/${variantId}/${Date.now()}-${imageIndex}-${safeImageFileName(image.name, "variant-image")}`;
+      const { error: uploadError } = await supabase.storage
+        .from(productImagesBucket)
+        .upload(filePath, image, { upsert: false, contentType: image.type || undefined });
+
+      if (uploadError) throw new Error(imageStorageSetupMessage);
+      const { data: publicUrl } = supabase.storage.from(productImagesBucket).getPublicUrl(filePath);
+      const { error: imageError } = await supabase.from("product_images").insert({
+        product_id: productId,
+        variant_id: variantId,
+        image_url: publicUrl.publicUrl,
+        alt_text: `${payload.finish ?? ""} ${payload.color ?? ""}`.trim() || null,
+        sort_order: imageIndex,
+        is_primary: imageIndex === 0,
+      } as never);
+      if (imageError) throw new Error("Variant image could not be saved.");
+    }
+  }
+
+  const { data: existing } = await supabase
+    .from("product_variants")
+    .select("id")
+    .eq("product_id", productId);
+  const omittedIds = ((existing ?? []) as { id: string }[])
+    .map((variant) => variant.id)
+    .filter((id) => !retainedIds.includes(id));
+
+  if (omittedIds.length) {
+    await supabase.from("product_variants").update({ is_active: false } as never).in("id", omittedIds);
+  }
+
+  const removeImageIds = formData.getAll("remove_variant_image_ids").map(String).filter(Boolean);
+  if (removeImageIds.length) {
+    await supabase.from("product_images").delete().eq("product_id", productId).in("id", removeImageIds);
+  }
+}
+
 function validateProductImage(image: File) {
-  if (image.size > maxProductImageBytes || !image.type.startsWith("image/")) {
+  if (image.size > maxProductImageBytes || !allowedProductImageTypes.has(image.type)) {
     throw new Error(imageValidationMessage);
   }
 }
@@ -463,6 +584,15 @@ export async function createProduct(formData: FormData) {
   await upsertProductTags(productId, parseTags(formData.get("tags")));
 
   try {
+    await syncProductVariants(productId, formData);
+  } catch (error) {
+    redirectWithMessage(
+      "/admin/products",
+      error instanceof Error ? error.message : "Product variants could not be saved.",
+    );
+  }
+
+  try {
     await uploadProductImages(productId, formData, false);
   } catch (error) {
     redirectWithMessage(
@@ -524,6 +654,15 @@ export async function updateProduct(productId: string, formData: FormData) {
   }
 
   await upsertProductTags(productId, parseTags(formData.get("tags")));
+
+  try {
+    await syncProductVariants(productId, formData);
+  } catch (error) {
+    redirectWithMessage(
+      `/admin/products/${productId}/edit`,
+      error instanceof Error ? error.message : "Product variants could not be saved.",
+    );
+  }
 
   try {
     await uploadProductImages(productId, formData, false);

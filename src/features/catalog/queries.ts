@@ -66,7 +66,9 @@ function mapProduct(product: ProductWithRelations): CatalogProduct {
       : product.is_size_customizable && product.size_options?.length
         ? "preset"
         : "none";
-  const sortedImages = [...(product.product_images ?? [])].sort(
+  const sortedImages = (product.product_images ?? [])
+    .filter((image) => !image.variant_id)
+    .sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
   );
   const primaryImage =
@@ -95,7 +97,11 @@ function mapProduct(product: ProductWithRelations): CatalogProduct {
       isPrimary: Boolean(image.is_primary),
       sortOrder: image.sort_order,
     })),
-    stock: product.stock_quantity,
+    stock: product.has_variants
+      ? (product.product_variants ?? [])
+          .filter((variant) => variant.is_active)
+          .reduce((total, variant) => total + variant.stock_quantity, 0)
+      : product.stock_quantity,
     lowStockThreshold: product.low_stock_threshold ?? 3,
     finishType,
     finishNotes: product.finish_notes ?? null,
@@ -119,6 +125,32 @@ function mapProduct(product: ProductWithRelations): CatalogProduct {
       getMaterialCareInstruction(finishType) ??
       product.care_instructions ??
       "Keep dry and store softly after wear.",
+    hasVariants: Boolean(product.has_variants),
+    variants: (product.product_variants ?? [])
+      .filter((variant) => variant.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((variant) => ({
+        id: variant.id,
+        finish: variant.finish,
+        color: variant.color,
+        stock: variant.stock_quantity,
+        priceOverride:
+          variant.price_override === null
+            ? null
+            : Number(variant.price_override),
+        materialTypeOverride: variant.material_type_override,
+        isActive: variant.is_active,
+        sortOrder: variant.sort_order,
+        images: [...(variant.product_images ?? [])]
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map((image) => ({
+            id: image.id,
+            imageUrl: image.image_url,
+            altText: image.alt_text ?? product.name,
+            isPrimary: Boolean(image.is_primary),
+            sortOrder: image.sort_order,
+          })),
+      })),
   };
 }
 
@@ -204,10 +236,12 @@ async function fetchProducts(
         builder_price_tier,
         stock_quantity,
         low_stock_threshold,
+        has_variants,
         is_featured,
         is_new_arrival,
         ${collectionSelect},
-        product_images(id, image_url, alt_text, is_primary, sort_order),
+        product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
+        product_variants(id, finish, color, stock_quantity, price_override, material_type_override, is_active, sort_order, product_images(id, image_url, alt_text, is_primary, sort_order)),
         product_tags(tag)
       `,
     )
@@ -216,10 +250,6 @@ async function fetchProducts(
 
   if (options.activeOnly) {
     query = query.eq("is_active", true);
-  }
-
-  if (options.inStockOnly) {
-    query = query.gt("stock_quantity", 0);
   }
 
   if (options.featuredOnly) {
@@ -260,7 +290,11 @@ async function fetchProducts(
       )
     : products;
 
-  return visibleProducts.map(mapProduct);
+  const mappedProducts = visibleProducts.map(mapProduct);
+
+  return options.inStockOnly
+    ? mappedProducts.filter((product) => product.stock > 0)
+    : mappedProducts;
 }
 
 async function fetchProductSalesCounts(productIds: string[]) {
@@ -422,7 +456,6 @@ export async function getProductBySlug(slug: string) {
   const products = await fetchProducts("getProductBySlug", {
     activeOnly: true,
     slug,
-    inStockOnly: true,
     publicVisibility: true,
   });
 

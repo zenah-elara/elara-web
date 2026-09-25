@@ -101,6 +101,11 @@ export type AdminProduct = Database["public"]["Tables"]["products"]["Row"] & {
   } | null;
   product_images: Database["public"]["Tables"]["product_images"]["Row"][] | null;
   product_tags: Database["public"]["Tables"]["product_tags"]["Row"][] | null;
+  product_variants:
+    | (Database["public"]["Tables"]["product_variants"]["Row"] & {
+        product_images: Database["public"]["Tables"]["product_images"]["Row"][] | null;
+      })[]
+    | null;
 };
 
 export type AdminProductFilters = {

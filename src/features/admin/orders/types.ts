@@ -16,6 +16,10 @@ export type AdminOrder = Database["public"]["Tables"]["orders"]["Row"] & {
   order_items:
     | (Database["public"]["Tables"]["order_items"]["Row"] & {
         products: AdminOrderProductPreview;
+        product_variants: {
+          material_type_override: "gold_plated" | "stainless_steel" | null;
+          product_images: AdminOrderProductImage[] | null;
+        } | null;
         custom_necklace_items:
           | (Database["public"]["Tables"]["custom_necklace_items"]["Row"] & {
               custom_necklace_charms:
@@ -30,6 +34,10 @@ export type AdminOrder = Database["public"]["Tables"]["orders"]["Row"] & {
 export type AdminOrderItem =
   Database["public"]["Tables"]["order_items"]["Row"] & {
     products: AdminOrderProductPreview;
+    product_variants: {
+      material_type_override: "gold_plated" | "stainless_steel" | null;
+      product_images: AdminOrderProductImage[] | null;
+    } | null;
     custom_necklace_items:
       | (Database["public"]["Tables"]["custom_necklace_items"]["Row"] & {
           custom_necklace_charms:

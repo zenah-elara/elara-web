@@ -130,6 +130,16 @@ export function CartView() {
                   {item.sizeLabel ?? "Size"}: {item.selectedSize}
                 </p>
               ) : null}
+              {item.itemType !== "custom_necklace" && item.selectedFinish ? (
+                <p className="mt-1 text-xs font-semibold text-[#7A3F63]">
+                  Finish: {item.selectedFinish}
+                </p>
+              ) : null}
+              {item.itemType !== "custom_necklace" && item.selectedColor ? (
+                <p className="mt-1 text-xs font-semibold text-[#7A3F63]">
+                  Color: {item.selectedColor}
+                </p>
+              ) : null}
               {item.itemType !== "custom_necklace" && item.customLength ? (
                 <p className="mt-1 text-xs font-semibold text-[#7A3F63]">
                   {item.customLengthLabel ?? "Custom length"}: {item.customLength}

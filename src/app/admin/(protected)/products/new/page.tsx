@@ -4,6 +4,7 @@ import {
   ProductSetupGuide,
 } from "@/components/admin/product-setup-fields";
 import { ProductSizeLengthFields } from "@/components/admin/product-size-length-fields";
+import { ProductVariantsFields } from "@/components/admin/product-variants-fields";
 import { createProduct } from "@/features/admin/catalog/actions";
 import { getAdminCollections } from "@/features/admin/catalog/queries";
 
@@ -40,6 +41,7 @@ export default async function NewProductPage({
         <ProductDetailFields />
         <MaterialDisclosureFields />
         <ProductSizeLengthFields />
+        <ProductVariantsFields />
         <ImageUploadFields />
         <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d38aa0] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(201,130,149,0.22)]">
           Create product

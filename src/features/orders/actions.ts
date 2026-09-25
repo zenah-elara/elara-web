@@ -229,7 +229,9 @@ function getRequiredProductQuantities(cartItems: CartItem[]) {
       return;
     }
 
-    add(item.productId, item.name, item.quantity);
+    if (!item.variantId) {
+      add(item.productId, item.name, item.quantity);
+    }
   });
 
   return quantities;
@@ -370,11 +372,18 @@ export async function submitOrderRequest(
   }
 
   const requiredQuantities = getRequiredProductQuantities(cartItems);
-  const productIds = [...requiredQuantities.keys()];
+  const productIds = [
+    ...new Set([
+      ...requiredQuantities.keys(),
+      ...cartItems
+        .filter((item): item is RegularCartItem => item.itemType !== "custom_necklace")
+        .map((item) => item.productId),
+    ]),
+  ];
   const { data: products, error: productError } = await supabase
     .from("products")
     .select(
-      "id, name, is_active, stock_quantity, is_size_customizable, size_length_behavior, size_options",
+      "id, name, price, is_active, has_variants, stock_quantity, is_size_customizable, size_length_behavior, size_options",
     )
     .in("id", productIds);
 
@@ -395,10 +404,30 @@ export async function submitOrderRequest(
     (products as Pick<
       ProductRow,
       "id" | "name" | "is_active" | "stock_quantity"
+      | "price" | "has_variants"
       | "is_size_customizable"
       | "size_length_behavior"
       | "size_options"
     >[]).map((product) => [product.id, product]),
+  );
+
+  const regularItems = cartItems.filter(
+    (item): item is RegularCartItem => item.itemType !== "custom_necklace",
+  );
+  const variantIds = [...new Set(regularItems.map((item) => item.variantId).filter((id): id is string => Boolean(id)))];
+  const { data: variants, error: variantError } = variantIds.length
+    ? await supabase
+        .from("product_variants")
+        .select("id, product_id, finish, color, stock_quantity, price_override, material_type_override, is_active")
+        .in("id", variantIds)
+    : { data: [], error: null };
+
+  if (variantError || !variants) {
+    return { success: false, message: "Product options could not be checked. Please try again." };
+  }
+
+  const variantMap = new Map(
+    (variants as Database["public"]["Tables"]["product_variants"]["Row"][]).map((variant) => [variant.id, variant]),
   );
 
   for (const [productId, required] of requiredQuantities) {
@@ -433,7 +462,37 @@ export async function submitOrderRequest(
     if (item.itemType === "custom_necklace") continue;
 
     const product = productMap.get(item.productId);
-    if (!product) continue;
+    if (!product || !product.is_active) {
+      return {
+        success: false,
+        message: `${item.name} is no longer available. Please remove it from your cart.`,
+      };
+    }
+    const variant = item.variantId ? variantMap.get(item.variantId) : null;
+
+    if (product.has_variants) {
+      if (
+        !variant ||
+        !variant.is_active ||
+        variant.product_id !== item.productId ||
+        variant.stock_quantity < item.quantity
+      ) {
+        return {
+          success: false,
+          message: `${item.name} is not available in the selected Finish and Color.`,
+        };
+      }
+
+      item.selectedFinish = variant.finish;
+      item.selectedColor = variant.color;
+      item.unitPrice = variant.price_override === null
+        ? Number(product.price)
+        : Number(variant.price_override);
+      item.finishType = variant.material_type_override ?? item.finishType;
+      item.stockQuantity = variant.stock_quantity;
+    } else if (item.variantId) {
+      return { success: false, message: `${item.name} has an invalid product option.` };
+    }
 
     const behavior =
       product.size_length_behavior !== "none"
@@ -523,6 +582,12 @@ export async function submitOrderRequest(
     order_id: orderId,
     product_id:
       item.itemType === "custom_necklace" ? null : item.productId,
+    variant_id:
+      item.itemType === "custom_necklace" ? null : item.variantId ?? null,
+    selected_finish:
+      item.itemType === "custom_necklace" ? null : item.selectedFinish ?? null,
+    selected_color:
+      item.itemType === "custom_necklace" ? null : item.selectedColor ?? null,
     item_type:
       item.itemType === "custom_necklace"
         ? ("custom_necklace" as const)

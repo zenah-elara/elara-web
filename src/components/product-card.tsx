@@ -8,7 +8,10 @@ import { StockBadge } from "./stock-badge";
 export function ProductCard({ product }: { product: Product }) {
   const requiresProductOptions =
     (product.sizeLengthBehavior && product.sizeLengthBehavior !== "none") ||
-    (product.isSizeCustomizable && Boolean(product.sizeOptions?.length));
+    (product.isSizeCustomizable && Boolean(product.sizeOptions?.length)) ||
+    Boolean(product.hasVariants && product.variants?.length);
+  const finishCount = new Set(product.variants?.map((variant) => variant.finish).filter(Boolean)).size;
+  const colorCount = new Set(product.variants?.map((variant) => variant.color).filter(Boolean)).size;
 
   return (
     <article className="group relative overflow-hidden rounded-[2.5rem] border border-[#f2c8d5] bg-[linear-gradient(180deg,#fffdf8_0%,#fff4f8_100%)] p-3 shadow-[0_20px_48px_rgba(211,140,157,0.16)] transition hover:-translate-y-1 hover:border-[#E2B4C1] hover:shadow-[0_30px_70px_rgba(211,140,157,0.24)]">
@@ -64,6 +67,11 @@ export function ProductCard({ product }: { product: Product }) {
                 : product.sizeLabel?.toLowerCase().includes("length")
                   ? "Length options"
                   : "Sizes available"}
+          </p>
+        ) : null}
+        {product.hasVariants && product.variants?.length ? (
+          <p className="mt-2 text-xs font-semibold text-[#9A4F78]">
+            {[finishCount ? `${finishCount} ${finishCount === 1 ? "finish" : "finishes"}` : "", colorCount ? `${colorCount} ${colorCount === 1 ? "color" : "colors"}` : ""].filter(Boolean).join(" · ")}
           </p>
         ) : null}
         <div className="mt-4 flex items-center justify-between gap-3">

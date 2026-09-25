@@ -65,6 +65,9 @@ export type RegularCartItem = {
   stockQuantity?: number;
   lowStockThreshold?: number;
   finishType?: "gold_plated" | "stainless_steel" | "non_tarnish" | null;
+  variantId?: string | null;
+  selectedFinish?: string | null;
+  selectedColor?: string | null;
   selectedSize?: string | null;
   sizeLabel?: string | null;
   customLength?: string | null;
