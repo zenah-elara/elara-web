@@ -5,6 +5,7 @@ import {
 } from "@/components/admin/product-setup-fields";
 import { ProductSizeLengthFields } from "@/components/admin/product-size-length-fields";
 import { ProductVariantsFields } from "@/components/admin/product-variants-fields";
+import { ProductMaterialFields } from "@/components/admin/product-material-fields";
 import {
   NonVariantOnly,
   ProductVariantFormProvider,
@@ -46,12 +47,6 @@ export default async function EditProductPage({
   const images = [...(product.product_images ?? [])].filter((image) => !image.variant_id).sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
   );
-  const selectedFinishType =
-    product.finish_type === "stainless_steel" ||
-    product.finish_type === "non_tarnish"
-      ? "stainless_steel"
-      : "gold_plated";
-
   return (
     <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
       <SectionHeader
@@ -117,10 +112,7 @@ export default async function EditProductPage({
           <label className="block">
             <span className="text-sm font-semibold text-cocoa">SKU</span>
             <input name="sku" defaultValue={product.sku ?? ""} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
-          </label>
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">Sort order</span>
-            <input name="sort_order" type="number" defaultValue={product.sort_order ?? 0} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
+            <span className="mt-2 block text-xs font-normal text-[#76504a]">Optional internal product code, e.g. RING-001.</span>
           </label>
           <NonVariantOnly>
             <label className="block">
@@ -158,49 +150,20 @@ export default async function EditProductPage({
             <input name="is_new_arrival" type="checkbox" defaultChecked={Boolean(product.is_new_arrival)} className="h-4 w-4" />
             new arrival
           </label>
+          <details className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-4 md:col-span-3">
+            <summary className="cursor-pointer text-sm font-semibold text-[#7A3F63]">Advanced settings</summary>
+            <label className="mt-4 block max-w-sm">
+              <span className="text-sm font-semibold text-cocoa">Sort order</span>
+              <input name="sort_order" type="number" step="1" defaultValue={product.sort_order ?? 0} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none" />
+              <span className="mt-2 block text-xs leading-5 text-[#76504a]">Optional manual display priority. Lower numbers appear first where manual sorting is used.</span>
+            </label>
+          </details>
         </div>
 
-        <div className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
-          <p className="text-sm font-semibold text-cocoa">
-            Material
-          </p>
-          <p className="mt-2 text-xs leading-5 text-[#76504a]">
-            Choose the material customers should see for this product. Build
-            Your Elara Piece can mix materials, such as a stainless steel chain
-            with a gold-plated charm.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="flex items-center gap-3 rounded-2xl border border-[#efccd4] bg-white/75 px-4 py-3 text-sm font-semibold text-cocoa">
-              <input
-                name="finish_type"
-                type="radio"
-                value="gold_plated"
-                defaultChecked={selectedFinishType === "gold_plated"}
-              />
-              Gold-plated
-            </label>
-            <label className="flex items-center gap-3 rounded-2xl border border-[#efccd4] bg-white/75 px-4 py-3 text-sm font-semibold text-cocoa">
-              <input
-                name="finish_type"
-                type="radio"
-                value="stainless_steel"
-                defaultChecked={selectedFinishType === "stainless_steel"}
-              />
-              Non-tarnish / Stainless steel
-            </label>
-          </div>
-          <label className="mt-4 block">
-            <span className="text-sm font-semibold text-cocoa">
-              Optional material notes
-            </span>
-            <textarea
-              name="finish_notes"
-              rows={2}
-              defaultValue={product.finish_notes ?? ""}
-              className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none"
-            />
-          </label>
-        </div>
+        <ProductMaterialFields
+          defaultMaterial={product.finish_type === "stainless_steel" || product.finish_type === "non_tarnish" ? "stainless_steel" : "gold_plated"}
+          defaultAdditionalNote={product.finish_notes}
+        />
 
         <ProductSizeLengthFields
           defaultProductType={product.product_type}

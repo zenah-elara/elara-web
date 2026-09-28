@@ -54,6 +54,12 @@ const productTypes: ProductType[] = [
   "connector",
   "custom_necklace",
 ];
+const readyToShopProductTypes = new Set<ProductType>([
+  "regular_product",
+  "necklace",
+  "bracelet",
+  "ring",
+]);
 
 const finishTypes = ["gold_plated", "stainless_steel"] as const;
 const builderPriceTiers = ["basic", "premium"] as const;
@@ -145,6 +151,10 @@ export function parseProductFormData(formData: FormData): ProductInsert {
   if (!productTypes.includes(productType as ProductType)) {
     throw new Error("product_type is invalid.");
   }
+  const price = numberValue(formData, "price");
+  if (readyToShopProductTypes.has(productType as ProductType) && price <= 0) {
+    throw new Error("Enter a selling price greater than ₱0.");
+  }
 
   const sizeLengthBehavior = sizeLengthBehaviorValue(formData);
   const usesPresetSizes =
@@ -169,7 +179,7 @@ export function parseProductFormData(formData: FormData): ProductInsert {
     name,
     slug,
     description: textValue(formData, "description"),
-    price: numberValue(formData, "price"),
+    price,
     collection_id: textValue(formData, "collection_id"),
     product_type: productType as ProductType,
     finish_type: finishTypeValue(formData),

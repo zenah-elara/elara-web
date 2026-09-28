@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdminUser } from "@/features/auth/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
+import type { AdminActionState } from "./types";
 import {
   parseCollectionFormData,
   parseProductFormData,
@@ -691,9 +692,34 @@ export async function deleteCollection(collectionId: string, formData: FormData)
   redirect("/admin/collections?deleted=1");
 }
 
-export async function createProduct(formData: FormData) {
+function safeCreateProductValidationMessage(error: unknown) {
+  if (!(error instanceof Error)) return "The product could not be saved. Please try again.";
+  if (error.message.includes("name is required")) return "Please enter a product name.";
+  if (error.message.includes("product_type is invalid")) return "Please select a product type.";
+  if (error.message === "Enter a selling price greater than ₱0.") return error.message;
+  if (error.message.includes("Preset size choices")) return "Add at least one preset size or length choice.";
+  if (error.message.includes("Custom length label")) return "Enter a label for the custom length field.";
+  return "Please check the required product details and try again.";
+}
+
+export async function createProduct(
+  _previousState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
   const supabase = await getAuthorizedSupabase();
-  const payload = parseProductFormData(formData);
+  let payload: ReturnType<typeof parseProductFormData>;
+
+  try {
+    payload = parseProductFormData(formData);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[admin catalog] Create product validation failed.", {
+        message: error instanceof Error ? error.message : "Unknown validation error",
+      });
+    }
+    return { success: false, message: safeCreateProductValidationMessage(error) };
+  }
+
   const { data, error } = await supabase
     .from("products")
     .insert(payload as never)
@@ -701,7 +727,21 @@ export async function createProduct(formData: FormData) {
     .single();
 
   if (error || !data) {
-    redirectWithMessage("/admin/products/new", "Product could not be created.");
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[admin catalog] Product insert failed.", {
+        code: error?.code,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        payloadKeys: Object.keys(payload).sort(),
+      });
+    }
+    return {
+      success: false,
+      message: error?.code === "23505"
+        ? "A product with this name or slug already exists. Please use a different slug."
+        : "The product could not be saved. Please try again.",
+    };
   }
 
   const createdProduct = data as unknown as { id: string; slug: string };
@@ -712,18 +752,27 @@ export async function createProduct(formData: FormData) {
   try {
     await syncProductVariants(productId, formData);
   } catch (error) {
-    redirectWithMessage(
-      "/admin/products",
-      error instanceof Error ? error.message : "Product variants could not be saved.",
-    );
+    await supabase.from("products").delete().eq("id", productId);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[admin catalog] Variant creation failed.", {
+        productId,
+        message: error instanceof Error ? error.message : "Unknown variant error",
+      });
+    }
+    return {
+      success: false,
+      message: error instanceof Error
+        ? error.message
+        : "Product variants could not be saved. Please try again.",
+    };
   }
 
   try {
     await uploadProductImages(productId, formData, false);
   } catch (error) {
     redirectWithMessage(
-      "/admin/products",
-      safeImageErrorMessage(error),
+      `/admin/products/${productId}/edit`,
+      `Product saved, but its photos could not be uploaded. ${safeImageErrorMessage(error)}`,
     );
   }
 

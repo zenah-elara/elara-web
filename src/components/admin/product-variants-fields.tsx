@@ -139,7 +139,21 @@ export function ProductVariantsFields({
                 </div>
                 <label className="mt-4 block max-w-xs text-xs font-semibold text-[#76504a]">
                   Stock
-                  <input type="number" min="0" value={variant.stockQuantity} onChange={(event) => updateVariant(variant.clientKey, { stockQuantity: Math.max(0, Number(event.target.value)) })} className="mt-1 w-full rounded-xl border border-[#efccd4] px-3 py-2" />
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    value={variant.stockQuantity === 0 ? "" : variant.stockQuantity}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      const parsed = raw === "" ? 0 : Math.floor(Number(raw));
+                      updateVariant(variant.clientKey, {
+                        stockQuantity: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
+                      });
+                    }}
+                    className="mt-1 w-full rounded-xl border border-[#efccd4] px-3 py-2"
+                  />
                 </label>
                 <VariantImageUploader productId={productId} variantId={variant.id} label={`${productName} - ${label}`} initialImages={variant.images ?? []} />
                 <details className="mt-4 rounded-xl border border-[#f2dde3] bg-[#fffaf8] p-3">

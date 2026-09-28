@@ -7,10 +7,10 @@ import { ProductSizeLengthFields } from "@/components/admin/product-size-length-
 import { ProductVariantsFields } from "@/components/admin/product-variants-fields";
 import {
   NonVariantOnly,
-  ProductVariantFormProvider,
   VariantOnly,
 } from "@/components/admin/product-variant-form-context";
-import { createProduct } from "@/features/admin/catalog/actions";
+import { ProductCreateForm } from "@/components/admin/product-create-form";
+import { ProductMaterialFields } from "@/components/admin/product-material-fields";
 import { getAdminCollections } from "@/features/admin/catalog/queries";
 
 type NewProductPageProps = {
@@ -37,8 +37,7 @@ export default async function NewProductPage({
           {params.message}
         </div>
       ) : null}
-      <form action={createProduct} className="mt-8 space-y-6 rounded-3xl boutique-card p-6">
-        <ProductVariantFormProvider defaultHasVariants={false}>
+      <ProductCreateForm>
         <ProductSetupGuide />
         <div className="grid gap-5 md:grid-cols-2">
           <ProductBaseFields />
@@ -46,7 +45,7 @@ export default async function NewProductPage({
         <ProductSetupFields collections={collections} />
         <ProductVariantsFields />
         <ProductDetailFields />
-        <MaterialDisclosureFields />
+        <ProductMaterialFields />
         <ProductSizeLengthFields />
         <NonVariantOnly><ImageUploadFields /></NonVariantOnly>
         <VariantOnly>
@@ -56,45 +55,8 @@ export default async function NewProductPage({
             <div className="mt-4"><ImageUploadFields /></div>
           </details>
         </VariantOnly>
-        <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d38aa0] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(201,130,149,0.22)]">
-          Create product
-        </button>
-        </ProductVariantFormProvider>
-      </form>
+      </ProductCreateForm>
     </section>
-  );
-}
-
-function MaterialDisclosureFields() {
-  return (
-    <div className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
-      <p className="text-sm font-semibold text-cocoa">Material</p>
-      <p className="mt-2 text-xs leading-5 text-[#76504a]">
-        Choose the material customers should see for this product. Build Your
-        Elara Piece can mix materials, such as a stainless steel chain with a
-        gold-plated charm.
-      </p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="flex items-center gap-3 rounded-2xl border border-[#efccd4] bg-white/75 px-4 py-3 text-sm font-semibold text-cocoa">
-          <input name="finish_type" type="radio" value="gold_plated" defaultChecked />
-          Gold-plated
-        </label>
-        <label className="flex items-center gap-3 rounded-2xl border border-[#efccd4] bg-white/75 px-4 py-3 text-sm font-semibold text-cocoa">
-          <input name="finish_type" type="radio" value="stainless_steel" />
-          Non-tarnish / Stainless steel
-        </label>
-      </div>
-      <label className="mt-4 block">
-        <span className="text-sm font-semibold text-cocoa">
-          Optional material notes
-        </span>
-        <textarea
-          name="finish_notes"
-          rows={2}
-          className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none"
-        />
-      </label>
-    </div>
   );
 }
 
@@ -128,10 +90,7 @@ function ProductDetailFields() {
       <label className="block">
         <span className="text-sm font-semibold text-cocoa">SKU</span>
         <input name="sku" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
-      </label>
-      <label className="block">
-        <span className="text-sm font-semibold text-cocoa">Sort order</span>
-        <input name="sort_order" type="number" defaultValue="0" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
+        <span className="mt-2 block text-xs font-normal text-[#76504a]">Optional internal product code, e.g. RING-001.</span>
       </label>
       <NonVariantOnly>
         <label className="block">
@@ -153,6 +112,14 @@ function ProductDetailFields() {
           {name.replace("is_", "").replace("_", " ")}
         </label>
       ))}
+      <details className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-4 md:col-span-3">
+        <summary className="cursor-pointer text-sm font-semibold text-[#7A3F63]">Advanced settings</summary>
+        <label className="mt-4 block max-w-sm">
+          <span className="text-sm font-semibold text-cocoa">Sort order</span>
+          <input name="sort_order" type="number" step="1" defaultValue="0" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none" />
+          <span className="mt-2 block text-xs leading-5 text-[#76504a]">Optional manual display priority. Lower numbers appear first where manual sorting is used.</span>
+        </label>
+      </details>
     </div>
   );
 }
