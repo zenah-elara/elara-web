@@ -98,20 +98,32 @@ function getSingleImageFile(formData: FormData, key: string) {
 function parseVariantFormValues(formData: FormData): VariantFormValue[] {
   try {
     const parsed = JSON.parse(String(formData.get("variants_json") ?? "[]"));
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      throw new Error("One or more variant combinations are incomplete.");
+    }
 
-    return parsed.filter((value): value is VariantFormValue =>
+    const valid = parsed.every((value): value is VariantFormValue =>
       Boolean(
         value &&
         typeof value.clientKey === "string" &&
         (typeof value.finish === "string" || value.finish === null) &&
         (typeof value.color === "string" || value.color === null) &&
         (value.finish?.trim() || value.color?.trim()) &&
-        Number.isFinite(Number(value.stockQuantity)),
+        Number.isInteger(Number(value.stockQuantity)) &&
+        Number(value.stockQuantity) >= 0 &&
+        (value.priceOverride === null ||
+          (Number.isFinite(Number(value.priceOverride)) &&
+            Number(value.priceOverride) >= 0)),
       ),
     );
+
+    if (!valid) {
+      throw new Error("One or more variant combinations are incomplete.");
+    }
+
+    return parsed;
   } catch {
-    return [];
+    throw new Error("One or more variant combinations are incomplete.");
   }
 }
 
@@ -808,6 +820,17 @@ function safeCreateProductValidationMessage(error: unknown) {
   return "Please check the required product details and try again.";
 }
 
+function safeUpdateProductValidationMessage(error: unknown) {
+  if (!(error instanceof Error)) return "Product could not be saved. Please try again.";
+  if (error.message.includes("name is required")) return "Please enter a product name.";
+  if (error.message.includes("product_type is invalid")) return "Please select a valid product type.";
+  if (error.message === "Enter a selling price greater than ₱0.") return error.message;
+  if (error.message.includes("Stock must")) return error.message;
+  if (error.message.includes("Preset size choices")) return "Add at least one preset size or length choice.";
+  if (error.message.includes("Custom length label")) return "Enter a label for the custom length field.";
+  return "Product could not be saved. Please check the required fields and try again.";
+}
+
 export async function createProduct(
   _previousState: AdminActionState,
   formData: FormData,
@@ -897,7 +920,11 @@ export async function createProduct(
   redirectWithMessage("/admin/products", "Product saved.");
 }
 
-export async function updateProduct(productId: string, formData: FormData) {
+export async function updateProduct(
+  productId: string,
+  _previousState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
   const supabase = await getAuthorizedSupabase();
   const { data: previousProduct } = await supabase
     .from("products")
@@ -919,10 +946,7 @@ export async function updateProduct(productId: string, formData: FormData) {
             }
           : null,
     });
-    redirectWithMessage(
-      `/admin/products/${productId}/edit`,
-      "Product could not be updated. Please check required fields and product setup.",
-    );
+    return { success: false, message: safeUpdateProductValidationMessage(error) };
   }
   const previousPublication = previousProduct as {
     slug?: string;
@@ -951,10 +975,13 @@ export async function updateProduct(productId: string, formData: FormData) {
       error,
       payloadKeys,
     });
-    redirectWithMessage(
-      `/admin/products/${productId}/edit`,
-      "Product could not be updated. Please check required fields and product setup.",
-    );
+    return {
+      success: false,
+      message:
+        error.code === "23505"
+          ? "A product with this name or slug already exists. Please use a different slug."
+          : "This product could not be updated. Please try again.",
+    };
   }
 
   await upsertProductTags(productId, parseTags(formData.get("tags")));
@@ -962,19 +989,27 @@ export async function updateProduct(productId: string, formData: FormData) {
   try {
     await syncProductVariants(productId, formData);
   } catch (error) {
-    redirectWithMessage(
-      `/admin/products/${productId}/edit`,
-      error instanceof Error ? error.message : "Product variants could not be saved.",
-    );
+    logProductUpdateError({
+      productId,
+      step: "syncProductVariants",
+      error: error instanceof Error ? { message: error.message } : null,
+    });
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "One or more variant combinations could not be saved.",
+    };
   }
 
   try {
     await uploadProductImages(productId, formData, false);
   } catch (error) {
-    redirectWithMessage(
-      `/admin/products/${productId}/edit`,
-      safeImageErrorMessage(error),
-    );
+    return {
+      success: false,
+      message: `Product saved, but its photos could not be uploaded. ${safeImageErrorMessage(error)}`,
+    };
   }
 
   revalidatePath("/admin/products");
@@ -983,7 +1018,7 @@ export async function updateProduct(productId: string, formData: FormData) {
     (previousProduct as { slug?: string } | null)?.slug ?? payload.slug,
   );
   revalidateStorefrontCatalog(payload.slug);
-  redirectWithMessage(`/admin/products/${productId}/edit`, "Product updated.");
+  return { success: true, message: "Product saved." };
 }
 
 export async function toggleProductActive(productId: string, isActive: boolean) {

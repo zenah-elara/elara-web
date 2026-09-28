@@ -38,6 +38,26 @@ function numberValue(formData: FormData, key: string, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function wholeNumberAtLeastZero(
+  formData: FormData,
+  key: string,
+  fallback = 0,
+) {
+  const raw = String(formData.get(key) ?? "").trim();
+  if (!raw) return fallback;
+
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(
+      key === "stock_quantity"
+        ? "Stock must be a whole number of 0 or more."
+        : "Low stock threshold must be a whole number of 0 or more.",
+    );
+  }
+
+  return value;
+}
+
 function booleanValue(formData: FormData, key: string) {
   return formData.get(key) === "on";
 }
@@ -199,10 +219,14 @@ export function parseProductFormData(formData: FormData): ProductInsert {
     sku: textValue(formData, "sku"),
     material_details: textValue(formData, "material_details"),
     care_instructions: textValue(formData, "care_instructions"),
-    stock_quantity: numberValue(formData, "stock_quantity"),
+    stock_quantity: wholeNumberAtLeastZero(formData, "stock_quantity"),
     has_variants: booleanValue(formData, "has_variants"),
     is_published: formData.get("publication_status") === "published",
-    low_stock_threshold: numberValue(formData, "low_stock_threshold", 3),
+    low_stock_threshold: wholeNumberAtLeastZero(
+      formData,
+      "low_stock_threshold",
+      3,
+    ),
     is_active: booleanValue(formData, "is_active"),
     is_featured: booleanValue(formData, "is_featured"),
     is_new_arrival: booleanValue(formData, "is_new_arrival"),

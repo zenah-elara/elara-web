@@ -8,18 +8,14 @@ import { ProductVariantsFields } from "@/components/admin/product-variants-field
 import { ProductMaterialFields } from "@/components/admin/product-material-fields";
 import { ProductPublishingFields } from "@/components/admin/product-publishing-fields";
 import { ProductPublishControl } from "@/components/admin/product-publish-control";
+import { ProductEditForm } from "@/components/admin/product-edit-form";
 import Link from "next/link";
-import {
-  NonVariantOnly,
-  ProductVariantFormProvider,
-  VariantOnly,
-} from "@/components/admin/product-variant-form-context";
+import { NonVariantOnly, VariantOnly } from "@/components/admin/product-variant-form-context";
 import { SectionHeader } from "@/components/section-header";
 import {
   deleteProductImage,
   deleteProduct,
   setPrimaryProductImage,
-  updateProduct,
   uploadProductImageAction,
 } from "@/features/admin/catalog/actions";
 import {
@@ -67,8 +63,7 @@ export default async function EditProductPage({
         </div>
       ) : null}
 
-      <form action={updateProduct.bind(null, product.id)} className="mt-8 space-y-6 rounded-3xl boutique-card p-6">
-        <ProductVariantFormProvider defaultHasVariants={product.has_variants}>
+      <ProductEditForm productId={product.id} defaultHasVariants={product.has_variants}>
         <ProductSetupGuide />
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block">
@@ -207,11 +202,7 @@ export default async function EditProductPage({
           </p>
         </VariantOnly>
 
-        <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d38aa0] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(201,130,149,0.22)]">
-          Save product
-        </button>
-        </ProductVariantFormProvider>
-      </form>
+      </ProductEditForm>
 
       <section className="mt-8 rounded-3xl boutique-card p-6">
         <details open={!product.has_variants}>
