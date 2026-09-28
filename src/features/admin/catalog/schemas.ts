@@ -201,6 +201,7 @@ export function parseProductFormData(formData: FormData): ProductInsert {
     care_instructions: textValue(formData, "care_instructions"),
     stock_quantity: numberValue(formData, "stock_quantity"),
     has_variants: booleanValue(formData, "has_variants"),
+    is_published: formData.get("publication_status") === "published",
     low_stock_threshold: numberValue(formData, "low_stock_threshold", 3),
     is_active: booleanValue(formData, "is_active"),
     is_featured: booleanValue(formData, "is_featured"),

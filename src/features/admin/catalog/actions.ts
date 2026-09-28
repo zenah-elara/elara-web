@@ -575,6 +575,92 @@ export async function setCollectionPublished(
   );
 }
 
+type ReadyProductCandidate = {
+  id: string;
+  name: string;
+  slug: string;
+  price: number | string;
+  is_active: boolean | null;
+  product_type: string;
+  has_variants: boolean;
+  product_variants?: { id: string; is_active: boolean }[] | null;
+};
+
+function isReadyNormalProduct(product: ReadyProductCandidate) {
+  return Boolean(
+    product.name.trim() &&
+    product.slug.trim() &&
+    product.is_active &&
+    Number(product.price) > 0 &&
+    (!product.has_variants ||
+      Boolean(product.product_variants?.some((variant) => variant.is_active))) &&
+    readyCollectionProductTypes.includes(
+      product.product_type as (typeof readyCollectionProductTypes)[number],
+    ),
+  );
+}
+
+async function publishReadyProductsInCollection(
+  collectionId: string,
+  publishCollection: boolean,
+) {
+  const supabase = await getAuthorizedSupabase();
+  const [{ data: collection, error: collectionError }, { data: rows, error: productsError }] =
+    await Promise.all([
+      supabase.from("collections").select("id, name").eq("id", collectionId).maybeSingle(),
+      supabase
+        .from("products")
+        .select("id, name, slug, price, is_active, product_type, has_variants, product_variants(id, is_active)")
+        .eq("collection_id", collectionId)
+        .eq("is_published", false),
+    ]);
+
+  if (collectionError || productsError || !collection) {
+    redirectWithMessage("/admin/collections", "Collection publishing could not be completed.");
+  }
+
+  const candidates = (rows ?? []) as ReadyProductCandidate[];
+  const readyIds = candidates.filter(isReadyNormalProduct).map((product) => product.id);
+  const now = new Date().toISOString();
+
+  if (publishCollection) {
+    const { error } = await supabase
+      .from("collections")
+      .update({ is_published: true, published_at: now } as never)
+      .eq("id", collectionId);
+    if (error) redirectWithMessage("/admin/collections", "Collection could not be published.");
+  }
+
+  if (readyIds.length) {
+    const { error } = await supabase
+      .from("products")
+      .update({ is_published: true, published_at: now } as never)
+      .in("id", readyIds);
+    if (error) redirectWithMessage("/admin/collections", "Ready products could not be published.");
+  }
+
+  revalidatePath("/admin/collections");
+  revalidatePath("/admin/products");
+  revalidateStorefrontCatalog();
+
+  const skipped = candidates.length - readyIds.length;
+  const collectionName = (collection as { name: string }).name;
+  const prefix = publishCollection ? `${collectionName} published. ` : "";
+  const result = `${readyIds.length} ${readyIds.length === 1 ? "product" : "products"} published.`;
+  const remainder = skipped
+    ? ` ${skipped} ${skipped === 1 ? "product remained" : "products remained"} Draft because ${skipped === 1 ? "it is" : "they are"} incomplete.`
+    : "";
+  redirectWithMessage("/admin/collections", `${prefix}${result}${remainder}`);
+}
+
+export async function publishCollectionAndReadyProducts(collectionId: string) {
+  await publishReadyProductsInCollection(collectionId, true);
+}
+
+export async function publishReadyDraftProducts(collectionId: string) {
+  await publishReadyProductsInCollection(collectionId, false);
+}
+
 export async function publishAllReadyCollections() {
   const supabase = await getAuthorizedSupabase();
   const { data: draftCollections, error: collectionsError } = await supabase
@@ -602,7 +688,7 @@ export async function publishAllReadyCollections() {
 
   const { data: activeProducts, error: productsError } = await supabase
     .from("products")
-    .select("collection_id")
+    .select("id, collection_id, name, slug, price, is_active, product_type, has_variants, product_variants(id, is_active)")
     .eq("is_active", true)
     .in("product_type", [...readyCollectionProductTypes])
     .in("collection_id", draftIds);
@@ -614,9 +700,12 @@ export async function publishAllReadyCollections() {
     );
   }
 
-  const products = activeProducts as unknown as { collection_id: string | null }[];
+  const products = activeProducts as unknown as (ReadyProductCandidate & {
+    collection_id: string | null;
+  })[];
+  const readyProducts = products.filter(isReadyNormalProduct);
   const collectionIdsWithProducts = new Set(
-    products
+    readyProducts
       .map((product) => product.collection_id)
       .filter((id): id is string => Boolean(id)),
   );
@@ -631,11 +720,12 @@ export async function publishAllReadyCollections() {
   const skippedCount = drafts.length - readyIds.length;
 
   if (readyIds.length > 0) {
+    const now = new Date().toISOString();
     const { error } = await supabase
       .from("collections")
       .update({
         is_published: true,
-        published_at: new Date().toISOString(),
+        published_at: now,
       } as never)
       .in("id", readyIds);
 
@@ -645,12 +735,28 @@ export async function publishAllReadyCollections() {
         "Ready collections could not be published.",
       );
     }
+
+    const productIds = readyProducts
+      .filter((product) => product.collection_id && readyIds.includes(product.collection_id))
+      .map((product) => product.id);
+    if (productIds.length) {
+      const { error: productPublishError } = await supabase
+        .from("products")
+        .update({ is_published: true, published_at: now } as never)
+        .in("id", productIds);
+      if (productPublishError) {
+        redirectWithMessage("/admin/collections", "Collections published, but ready products could not be published.");
+      }
+    }
   }
 
   revalidatePath("/admin/collections");
   revalidateStorefrontCatalog();
 
-  const publishedLabel = `${readyIds.length} ${readyIds.length === 1 ? "collection" : "collections"} published.`;
+  const publishedProductsCount = readyProducts.filter(
+    (product) => product.collection_id && readyIds.includes(product.collection_id),
+  ).length;
+  const publishedLabel = `${readyIds.length} ${readyIds.length === 1 ? "collection" : "collections"} published. ${publishedProductsCount} ${publishedProductsCount === 1 ? "product" : "products"} published.`;
   const skippedLabel = skippedCount
     ? ` ${skippedCount} ${skippedCount === 1 ? "collection was" : "collections were"} skipped because ${skippedCount === 1 ? "it has" : "they have"} no active ready-to-shop products.`
     : "";
@@ -719,6 +825,10 @@ export async function createProduct(
     }
     return { success: false, message: safeCreateProductValidationMessage(error) };
   }
+  payload = {
+    ...payload,
+    published_at: payload.is_published ? new Date().toISOString() : null,
+  };
 
   const { data, error } = await supabase
     .from("products")
@@ -791,7 +901,7 @@ export async function updateProduct(productId: string, formData: FormData) {
   const supabase = await getAuthorizedSupabase();
   const { data: previousProduct } = await supabase
     .from("products")
-    .select("slug")
+    .select("slug, is_published, published_at")
     .eq("id", productId)
     .maybeSingle();
   let payload: ReturnType<typeof parseProductFormData>;
@@ -814,6 +924,19 @@ export async function updateProduct(productId: string, formData: FormData) {
       "Product could not be updated. Please check required fields and product setup.",
     );
   }
+  const previousPublication = previousProduct as {
+    slug?: string;
+    is_published?: boolean;
+    published_at?: string | null;
+  } | null;
+  payload = {
+    ...payload,
+    published_at: payload.is_published
+      ? previousPublication?.is_published
+        ? previousPublication.published_at
+        : new Date().toISOString()
+      : previousPublication?.published_at ?? null,
+  };
 
   const payloadKeys = Object.keys(payload).sort();
   const { error } = await supabase
@@ -884,6 +1007,49 @@ export async function toggleProductActive(productId: string, isActive: boolean) 
   redirectWithMessage(
     "/admin/products",
     isActive ? "Product activated." : "Product deactivated.",
+  );
+}
+
+export async function setProductPublished(productId: string, isPublished: boolean) {
+  const supabase = await getAuthorizedSupabase();
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, slug, name, price, is_active, product_type, has_variants, product_variants(id, is_active)")
+    .eq("id", productId)
+    .maybeSingle();
+  const candidate = product as ReadyProductCandidate | null;
+
+  if (
+    isPublished &&
+    candidate &&
+    readyCollectionProductTypes.includes(
+      candidate.product_type as (typeof readyCollectionProductTypes)[number],
+    ) &&
+    !isReadyNormalProduct(candidate)
+  ) {
+    redirectWithMessage(
+      "/admin/products",
+      "This product remains Draft because it is incomplete or inactive.",
+    );
+  }
+  const { error } = await supabase
+    .from("products")
+    .update({
+      is_published: isPublished,
+      ...(isPublished ? { published_at: new Date().toISOString() } : {}),
+    } as never)
+    .eq("id", productId);
+
+  if (error) {
+    redirectWithMessage("/admin/products", "Product publishing status could not change.");
+  }
+
+  revalidatePath("/admin/products");
+  revalidatePath(`/admin/products/${productId}/edit`);
+  revalidateStorefrontCatalog(candidate?.slug);
+  redirectWithMessage(
+    "/admin/products",
+    isPublished ? "Product published." : "Product moved to Draft.",
   );
 }
 

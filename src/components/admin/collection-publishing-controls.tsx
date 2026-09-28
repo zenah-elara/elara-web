@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import {
+  publishCollectionAndReadyProducts,
   publishAllReadyCollections,
+  publishReadyDraftProducts,
   setCollectionPublished,
 } from "@/features/admin/catalog/actions";
 
-type Confirmation = "unpublish" | "publish-all" | null;
+type Confirmation = "unpublish" | "publish-all" | "publish-collection" | "publish-products" | null;
 
 function ConfirmationPanel({
   title,
@@ -66,16 +68,28 @@ export function CollectionPublishControl({
 
   if (!isPublished) {
     return (
-      <form action={setCollectionPublished.bind(null, collectionId, true)}>
-        <button className="rounded-full bg-[#fff1f6] px-3 py-1 text-xs font-semibold text-[#8f4f68]">
-          Publish
-        </button>
-      </form>
+      <>
+      <button type="button" onClick={() => setConfirmation("publish-collection")} className="rounded-full bg-[#fff1f6] px-3 py-1 text-xs font-semibold text-[#8f4f68]">
+        Publish collection & ready products
+      </button>
+      {confirmation === "publish-collection" ? (
+        <ConfirmationPanel
+          title="Publish this collection and its ready products?"
+          copy="This will make the collection public and publish all ready Draft products inside it."
+          confirmLabel="Publish collection"
+          action={publishCollectionAndReadyProducts.bind(null, collectionId)}
+          onCancel={() => setConfirmation(null)}
+        />
+      ) : null}
+      </>
     );
   }
 
   return (
     <>
+      <button type="button" onClick={() => setConfirmation("publish-products")} className="rounded-full border border-[#d8b36a] bg-[#fffdf8] px-3 py-1 text-xs font-semibold text-[#76504a]">
+        Publish ready Draft products
+      </button>
       <button
         type="button"
         onClick={() => setConfirmation("unpublish")}
@@ -83,6 +97,15 @@ export function CollectionPublishControl({
       >
         Unpublish
       </button>
+      {confirmation === "publish-products" ? (
+        <ConfirmationPanel
+          title="Publish all ready Draft products?"
+          copy="All complete, Active Draft products in this collection will be published. Incomplete products will remain Draft."
+          confirmLabel="Publish ready products"
+          action={publishReadyDraftProducts.bind(null, collectionId)}
+          onCancel={() => setConfirmation(null)}
+        />
+      ) : null}
       {confirmation === "unpublish" ? (
         <ConfirmationPanel
           title="Unpublish this collection?"

@@ -43,6 +43,9 @@ export type ProductWithRelations = {
   stock_quantity: number;
   low_stock_threshold: number | null;
   has_variants: boolean;
+  is_active: boolean | null;
+  is_published: boolean;
+  published_at: string | null;
   is_featured: boolean | null;
   is_new_arrival: boolean | null;
   collections: {

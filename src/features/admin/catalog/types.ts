@@ -98,6 +98,7 @@ export type AdminProduct = Database["public"]["Tables"]["products"]["Row"] & {
     id: string;
     name: string;
     slug: string;
+    is_published: boolean;
   } | null;
   product_images: Database["public"]["Tables"]["product_images"]["Row"][] | null;
   product_tags: Database["public"]["Tables"]["product_tags"]["Row"][] | null;

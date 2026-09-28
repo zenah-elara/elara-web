@@ -11,6 +11,7 @@ import {
 } from "@/components/admin/product-variant-form-context";
 import { ProductCreateForm } from "@/components/admin/product-create-form";
 import { ProductMaterialFields } from "@/components/admin/product-material-fields";
+import { ProductPublishingFields } from "@/components/admin/product-publishing-fields";
 import { getAdminCollections } from "@/features/admin/catalog/queries";
 
 type NewProductPageProps = {
@@ -43,6 +44,7 @@ export default async function NewProductPage({
           <ProductBaseFields />
         </div>
         <ProductSetupFields collections={collections} />
+        <ProductPublishingFields />
         <ProductVariantsFields />
         <ProductDetailFields />
         <ProductMaterialFields />
@@ -106,7 +108,11 @@ function ProductDetailFields() {
         <span className="text-sm font-semibold text-cocoa">Tags</span>
         <input name="tags" placeholder="heart, gold, charm" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
       </label>
-      {["is_active", "is_featured", "is_new_arrival"].map((name) => (
+      <label className="flex items-start gap-3 text-sm font-semibold text-cocoa">
+        <input name="is_active" type="checkbox" defaultChecked className="mt-1 h-4 w-4" />
+        <span>Active<span className="mt-1 block text-xs font-normal text-[#76504a]">Currently enabled for sale. Inactive products remain hidden even when Published.</span></span>
+      </label>
+      {["is_featured", "is_new_arrival"].map((name) => (
         <label key={name} className="flex items-center gap-3 text-sm font-semibold text-cocoa">
           <input name={name} type="checkbox" defaultChecked={name === "is_active"} className="h-4 w-4" />
           {name.replace("is_", "").replace("_", " ")}

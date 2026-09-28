@@ -213,6 +213,8 @@ export type Database = {
           care_instructions: string | null;
           stock_quantity: number;
           has_variants: boolean;
+          is_published: boolean;
+          published_at: string | null;
           low_stock_threshold: number;
           is_active: boolean | null;
           is_featured: boolean | null;
@@ -262,6 +264,8 @@ export type Database = {
           care_instructions?: string | null;
           stock_quantity?: number;
           has_variants?: boolean;
+          is_published?: boolean;
+          published_at?: string | null;
           low_stock_threshold?: number;
           is_active?: boolean | null;
           is_featured?: boolean | null;
@@ -311,6 +315,8 @@ export type Database = {
           care_instructions?: string | null;
           stock_quantity?: number;
           has_variants?: boolean;
+          is_published?: boolean;
+          published_at?: string | null;
           low_stock_threshold?: number;
           is_active?: boolean | null;
           is_featured?: boolean | null;

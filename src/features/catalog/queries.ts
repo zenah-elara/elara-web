@@ -58,7 +58,7 @@ function mapCollection(collection: {
   };
 }
 
-function mapProduct(product: ProductWithRelations): CatalogProduct {
+export function mapProduct(product: ProductWithRelations): CatalogProduct {
   const finishType = normalizeMaterialType(product.finish_type);
   const sizeLengthBehavior =
     product.size_length_behavior && product.size_length_behavior !== "none"
@@ -193,6 +193,7 @@ async function fetchProducts(
   queryName: string,
   options: {
     activeOnly?: boolean;
+    publishedOnly?: boolean;
     featuredOnly?: boolean;
     newArrivalOnly?: boolean;
     collectionSlug?: string;
@@ -237,6 +238,9 @@ async function fetchProducts(
         stock_quantity,
         low_stock_threshold,
         has_variants,
+        is_active,
+        is_published,
+        published_at,
         is_featured,
         is_new_arrival,
         ${collectionSelect},
@@ -250,6 +254,9 @@ async function fetchProducts(
 
   if (options.activeOnly) {
     query = query.eq("is_active", true);
+  }
+  if (options.publishedOnly) {
+    query = query.eq("is_published", true);
   }
 
   if (options.featuredOnly) {
@@ -283,10 +290,15 @@ async function fetchProducts(
   const visibleProducts = options.publicVisibility
     ? products.filter(
         (product) =>
-          (product.product_type !== undefined &&
-            builderProductTypes.includes(product.product_type)) ||
-          product.collections === null ||
-          product.collections.is_published,
+          Boolean(product.is_active) &&
+          (
+            (product.product_type !== undefined &&
+              builderProductTypes.includes(product.product_type)) ||
+            (
+              product.is_published &&
+              (product.collections === null || product.collections.is_published)
+            )
+          ),
       )
     : products;
 
@@ -390,7 +402,11 @@ export async function getCollectionBySlug(slug: string) {
 }
 
 export async function getProducts() {
-  const products = await fetchProducts("getProducts", { publicVisibility: true });
+  const products = await fetchProducts("getProducts", {
+    activeOnly: true,
+    publishedOnly: true,
+    publicVisibility: true,
+  });
 
   return products ?? [];
 }
@@ -398,6 +414,7 @@ export async function getProducts() {
 export async function getActiveProducts() {
   const products = await fetchProducts("getActiveProducts", {
     activeOnly: true,
+    publishedOnly: true,
     inStockOnly: true,
     publicVisibility: true,
   });
@@ -408,6 +425,7 @@ export async function getActiveProducts() {
 export async function getReadyToShopProducts() {
   const products = await fetchProducts("getReadyToShopProducts", {
     activeOnly: true,
+    publishedOnly: true,
     productTypes: readyToShopProductTypes,
     publicVisibility: true,
   });
@@ -418,6 +436,7 @@ export async function getReadyToShopProducts() {
 export async function getFeaturedProducts() {
   const products = await fetchProducts("getFeaturedProducts", {
     activeOnly: true,
+    publishedOnly: true,
     featuredOnly: true,
     inStockOnly: true,
     publicVisibility: true,
@@ -429,6 +448,7 @@ export async function getFeaturedProducts() {
 export async function getNewArrivalProducts() {
   const products = await fetchProducts("getNewArrivalProducts", {
     activeOnly: true,
+    publishedOnly: true,
     newArrivalOnly: true,
     inStockOnly: true,
     publicVisibility: true,
@@ -445,6 +465,7 @@ export async function getProductsByCollectionSlug(slug: string) {
   return (
     (await fetchProducts("getProductsByCollectionSlug", {
       activeOnly: true,
+      publishedOnly: true,
       inStockOnly: true,
       collectionSlug: slug,
       publicVisibility: true,
@@ -455,6 +476,7 @@ export async function getProductsByCollectionSlug(slug: string) {
 export async function getProductBySlug(slug: string) {
   const products = await fetchProducts("getProductBySlug", {
     activeOnly: true,
+    publishedOnly: true,
     slug,
     publicVisibility: true,
   });

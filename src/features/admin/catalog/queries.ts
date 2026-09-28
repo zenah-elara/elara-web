@@ -5,6 +5,8 @@ import type {
   AdminProduct,
   AdminProductFilters,
 } from "./types";
+import { mapProduct } from "@/features/catalog/queries";
+import type { CatalogProduct, ProductWithRelations } from "@/features/catalog/types";
 
 function safeAdminWarning(queryName: string) {
   console.warn(`[admin catalog] ${queryName} failed.`);
@@ -64,7 +66,7 @@ export async function getAdminProducts(
     .select(
       `
         *,
-        collections(id, name, slug),
+        collections(id, name, slug, is_published),
         product_images(*),
         product_tags(*),
         product_variants(*, product_images(*))
@@ -116,7 +118,7 @@ export async function getAdminProductById(
     .select(
       `
         *,
-        collections(id, name, slug),
+        collections(id, name, slug, is_published),
         product_images(*),
         product_tags(*),
         product_variants(*, product_images(*))
@@ -131,4 +133,13 @@ export async function getAdminProductById(
   }
 
   return data as AdminProduct | null;
+}
+
+export async function getAdminProductPreview(
+  productId: string,
+): Promise<CatalogProduct | null> {
+  const product = await getAdminProductById(productId);
+  return product
+    ? mapProduct(product as unknown as ProductWithRelations)
+    : null;
 }

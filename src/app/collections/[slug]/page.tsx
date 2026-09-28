@@ -2,16 +2,11 @@ import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/product-card";
 import { SectionHeader } from "@/components/section-header";
 import {
-  getActiveCollections,
   getCollectionBySlug,
   getProductsByCollectionSlug,
 } from "@/features/catalog/queries";
 
-export async function generateStaticParams() {
-  const collections = await getActiveCollections();
-
-  return collections.map((collection) => ({ slug: collection.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function CollectionDetailPage({
   params,

@@ -6,6 +6,9 @@ import {
 import { ProductSizeLengthFields } from "@/components/admin/product-size-length-fields";
 import { ProductVariantsFields } from "@/components/admin/product-variants-fields";
 import { ProductMaterialFields } from "@/components/admin/product-material-fields";
+import { ProductPublishingFields } from "@/components/admin/product-publishing-fields";
+import { ProductPublishControl } from "@/components/admin/product-publish-control";
+import Link from "next/link";
 import {
   NonVariantOnly,
   ProductVariantFormProvider,
@@ -54,6 +57,10 @@ export default async function EditProductPage({
         title={`Edit ${product.name}`}
         description="Update product details, tags, images, and storefront visibility."
       />
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Link href={`/admin/products/${product.id}/preview`} className="rounded-full border border-[#d8b36a] bg-[#fffdf8] px-4 py-2 text-sm font-semibold text-[#7A3F63]">Preview product</Link>
+        <ProductPublishControl productId={product.id} isPublished={product.is_published} />
+      </div>
       {query?.message ? (
         <div className="mt-6 rounded-2xl border border-[#efd2bc] bg-[#fff7ef] p-4 text-sm font-medium text-[#76504a]">
           {query.message}
@@ -84,6 +91,7 @@ export default async function EditProductPage({
           defaultProductType={product.product_type}
           defaultBuilderPriceTier={product.builder_price_tier}
         />
+        <ProductPublishingFields defaultPublished={product.is_published} />
 
         <ProductVariantsFields
           productId={product.id}
@@ -138,9 +146,9 @@ export default async function EditProductPage({
             name="care_instructions"
             value={product.care_instructions ?? ""}
           />
-          <label className="flex items-center gap-3 text-sm font-semibold text-cocoa">
-            <input name="is_active" type="checkbox" defaultChecked={Boolean(product.is_active)} className="h-4 w-4" />
-            active
+          <label className="flex items-start gap-3 text-sm font-semibold text-cocoa">
+            <input name="is_active" type="checkbox" defaultChecked={Boolean(product.is_active)} className="mt-1 h-4 w-4" />
+            <span>Active<span className="mt-1 block text-xs font-normal text-[#76504a]">Currently enabled for sale. Inactive products remain hidden even when Published.</span></span>
           </label>
           <label className="flex items-center gap-3 text-sm font-semibold text-cocoa">
             <input name="is_featured" type="checkbox" defaultChecked={Boolean(product.is_featured)} className="h-4 w-4" />

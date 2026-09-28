@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/button";
 import { SectionHeader } from "@/components/section-header";
+import { ProductPublishControl } from "@/components/admin/product-publish-control";
 import {
   deleteProduct,
   toggleProductActive,
@@ -11,6 +12,7 @@ import {
 } from "@/features/admin/catalog/queries";
 import { productTypes, type ProductType } from "@/features/admin/catalog/types";
 import { formatPrice } from "@/lib/data";
+import { getAdminProductVisibility } from "@/features/admin/catalog/visibility";
 
 type ProductsPageProps = {
   searchParams?: Promise<{
@@ -105,8 +107,8 @@ export default async function AdminProductsPage({
       </form>
 
       <div className="mt-8 overflow-x-auto rounded-3xl border border-[#efccd4] bg-white/82 shadow-sm">
-        <div className="min-w-[1040px]">
-          <div className="grid grid-cols-[80px_1.2fr_130px_1fr_100px_90px_130px_210px] gap-4 border-b border-[#efccd4] bg-[#fff7fa] px-5 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#9d746d]">
+        <div className="min-w-[1320px]">
+          <div className="grid grid-cols-[80px_1.2fr_130px_1fr_100px_90px_190px_300px] gap-4 border-b border-[#efccd4] bg-[#fff7fa] px-5 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#9d746d]">
             <span>Image</span>
             <span>Name</span>
             <span>Type</span>
@@ -117,14 +119,17 @@ export default async function AdminProductsPage({
             <span>Actions</span>
           </div>
           {products.map((product) => {
-            const primaryImage =
-              product.product_images?.find((image) => image.is_primary) ??
-              product.product_images?.[0];
+            const sharedImages = product.product_images?.filter((image) => !image.variant_id) ?? [];
+            const variantImages = product.product_variants
+              ?.filter((variant) => variant.is_active)
+              .flatMap((variant) => variant.product_images ?? []) ?? [];
+            const primaryImage = sharedImages.find((image) => image.is_primary) ?? sharedImages[0] ?? variantImages.find((image) => image.is_primary) ?? variantImages[0];
+            const visibility = getAdminProductVisibility(product);
 
             return (
               <div
                 key={product.id}
-                className="grid grid-cols-[80px_1.2fr_130px_1fr_100px_90px_130px_210px] items-center gap-4 border-b border-[#f5dce4] px-5 py-4 text-sm text-[#76504a] last:border-b-0"
+                className="grid grid-cols-[80px_1.2fr_130px_1fr_100px_90px_190px_300px] items-center gap-4 border-b border-[#f5dce4] px-5 py-4 text-sm text-[#76504a] last:border-b-0"
               >
                 <div className="h-14 w-14 overflow-hidden rounded-2xl bg-[#fff1f6]">
                   {primaryImage ? (
@@ -145,11 +150,19 @@ export default async function AdminProductsPage({
                 <span>{product.collections?.name ?? "Unassigned"}</span>
                 <span>{formatPrice(Number(product.price))}</span>
                 <span>{product.stock_quantity}</span>
-                <span>{product.is_active ? "Active" : "Inactive"}</span>
+                <div>
+                  <div className="flex flex-wrap gap-1">
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${product.is_published ? "bg-[#edf7ef] text-[#447451]" : "bg-[#fff1f6] text-[#8f4f68]"}`}>{product.is_published ? "Published" : "Draft"}</span>
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${visibility.visible ? "bg-[#edf7ef] text-[#447451]" : "bg-[#f5f0f2] text-[#76504a]"}`}>{visibility.visible ? "Visible" : "Hidden"}</span>
+                  </div>
+                  <p className="mt-1 text-xs">{visibility.reason}</p>
+                </div>
                 <div className="flex flex-wrap gap-2">
+                  <Link href={`/admin/products/${product.id}/preview`} className="rounded-full border border-[#efccd4] bg-white px-3 py-1 text-xs font-semibold text-[#7A3F63]">Preview</Link>
                   <Link href={`/admin/products/${product.id}/edit`} className="rounded-full border border-[#d8b36a] bg-[#fffdf8] px-3 py-1 text-xs font-semibold text-[#76504a]">
                     Edit product
                   </Link>
+                  <ProductPublishControl productId={product.id} isPublished={product.is_published} />
                   <form action={toggleProductActive.bind(null, product.id, !product.is_active)}>
                     <button className="rounded-full bg-[#fff1f6] px-3 py-1 text-xs font-semibold text-rose">
                       {product.is_active ? "Deactivate" : "Activate"}

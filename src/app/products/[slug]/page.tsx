@@ -1,15 +1,10 @@
 import { notFound } from "next/navigation";
 import { ProductDetailExperience } from "@/components/product/product-detail-experience";
 import {
-  getActiveProducts,
   getProductBySlug,
 } from "@/features/catalog/queries";
 
-export async function generateStaticParams() {
-  const products = await getActiveProducts();
-
-  return products.map((product) => ({ slug: product.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function ProductDetailPage({
   params,

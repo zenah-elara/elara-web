@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
+import { CollectionPublishControl } from "@/components/admin/collection-publishing-controls";
 import {
   deleteCollection,
   updateCollection,
@@ -29,6 +30,9 @@ export default async function EditCollectionPage({
         title={`Edit ${collection.name}`}
         description="Update collection details and choose when customers can see it."
       />
+      <div className="mt-5 flex flex-wrap gap-2">
+        <CollectionPublishControl collectionId={collection.id} isPublished={collection.is_published} />
+      </div>
       {query?.message ? (
         <div className="mt-6 rounded-2xl border border-[#efd2bc] bg-[#fff7ef] p-4 text-sm font-medium text-[#76504a]">
           {query.message}
