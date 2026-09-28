@@ -171,6 +171,15 @@ export default async function AdminOrderDetailPage({
         title={order.order_number}
         description="Review the request, confirm customer details, and update the order status. Stock deducts only when the order is marked Confirmed."
       />
+      <div className="mt-5 inline-flex flex-wrap items-center gap-2 rounded-full border border-[#efccd4] bg-[#fff8fb] px-4 py-2 text-xs font-semibold text-[#7A3F63]">
+        <span>Material acknowledgment:</span>
+        <span>{order.material_acknowledged_at ? "Confirmed" : "Not recorded"}</span>
+        {order.material_acknowledged_at ? (
+          <span className="font-medium text-[#8f5574]">
+            {formatDateTime(order.material_acknowledged_at)}
+          </span>
+        ) : null}
+      </div>
       {query?.message ? (
         <div className="mt-6 rounded-2xl border border-[#efd2bc] bg-[#fff7ef] p-4 text-sm font-medium text-[#76504a]">
           {query.message}

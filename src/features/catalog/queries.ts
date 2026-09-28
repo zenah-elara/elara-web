@@ -80,6 +80,23 @@ export function mapProduct(product: ProductWithRelations): CatalogProduct {
       ]
     : sortedImages;
 
+  function getVariantImages(variantId: string, nestedImages: NonNullable<NonNullable<ProductWithRelations["product_variants"]>[number]["product_images"]>) {
+    const explicitImages = (product.product_images ?? []).filter(
+      (image) => image.variant_id === variantId,
+    );
+    const candidates = explicitImages.length > 0 ? explicitImages : nestedImages;
+    const uniqueImages = [...new Map(
+      candidates.map((image) => [image.id ?? image.image_url, image]),
+    ).values()];
+
+    return uniqueImages.sort((a, b) => {
+      if (Boolean(a.is_primary) !== Boolean(b.is_primary)) {
+        return a.is_primary ? -1 : 1;
+      }
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+  }
+
   return {
     id: product.id,
     name: product.name,
@@ -141,8 +158,7 @@ export function mapProduct(product: ProductWithRelations): CatalogProduct {
         materialTypeOverride: variant.material_type_override,
         isActive: variant.is_active,
         sortOrder: variant.sort_order,
-        images: [...(variant.product_images ?? [])]
-          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        images: getVariantImages(variant.id, variant.product_images ?? [])
           .map((image) => ({
             id: image.id,
             imageUrl: image.image_url,

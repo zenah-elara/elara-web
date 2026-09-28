@@ -452,6 +452,7 @@ export type Database = {
           stock_deducted_at: string | null;
           confirmed_at: string | null;
           cancelled_at: string | null;
+          material_acknowledged_at: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -483,6 +484,7 @@ export type Database = {
           stock_deducted_at?: string | null;
           confirmed_at?: string | null;
           cancelled_at?: string | null;
+          material_acknowledged_at?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
         };
@@ -498,6 +500,7 @@ export type Database = {
           courier_service?: "grab_express" | "maxim" | "jnt_express" | null;
           dropoff_location?: string | null;
           shipping_address?: string | null;
+          material_acknowledged_at?: string | null;
           preferred_contact_method?: "facebook" | "instagram" | "phone";
           order_notes?: string | null;
           internal_notes?: string | null;

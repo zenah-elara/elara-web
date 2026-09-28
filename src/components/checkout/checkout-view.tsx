@@ -9,6 +9,11 @@ import { clearCart, getCartSubtotal } from "@/features/cart/utils";
 import { formatPrice } from "@/lib/data";
 import { getFinishLabel } from "@/components/finish-badge";
 import type { CustomNecklaceCartItem } from "@/features/cart/types";
+import {
+  getMaterialCareCopy,
+  getMaterialLabel,
+  normalizeMaterialType,
+} from "@/lib/materials";
 
 function getCheckoutCustomMaterialSummary(item: CustomNecklaceCartItem) {
   return [
@@ -35,10 +40,29 @@ export function CheckoutView() {
   const { items, isLoaded } = useCartItems();
   const [message, setMessage] = useState("");
   const [deliveryOption, setDeliveryOption] = useState("");
+  const [materialAcknowledged, setMaterialAcknowledged] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPending, startTransition] = useTransition();
   const subtotal = getCartSubtotal(items);
   const isSubmittingOrder = isSubmitting || isPending;
+  const materialTypes = [
+    ...new Set(
+      items.flatMap((item) => {
+        if (item.itemType !== "custom_necklace") {
+          const material = normalizeMaterialType(item.finishType);
+          return material ? [material] : [];
+        }
+
+        return [
+          item.chain.finishType,
+          item.connector?.finishType,
+          ...item.selectedItems.map((selected) => selected.finishType),
+        ]
+          .map(normalizeMaterialType)
+          .filter((material): material is "gold_plated" | "stainless_steel" => Boolean(material));
+      }),
+    ),
+  ];
 
   if (!isLoaded) {
     return (
@@ -84,7 +108,15 @@ export function CheckoutView() {
             return;
           }
 
+          if (!materialAcknowledged) {
+            setMessage(
+              "Please confirm that you have reviewed the material and care information before submitting your order request.",
+            );
+            return;
+          }
+
           formData.set("cart_json", JSON.stringify({ items }));
+          formData.set("material_acknowledged", "true");
           setMessage("");
           setIsSubmitting(true);
 
@@ -177,6 +209,61 @@ export function CheckoutView() {
           <span className="text-sm font-semibold text-[#7A3F63]">Order notes</span>
           <textarea name="order_notes" rows={4} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-[#7A3F63] outline-none" />
         </label>
+        <section className="rounded-3xl border border-[#efccd4] bg-[#fff8fb] p-5 sm:col-span-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c6a15a]">
+            Order review
+          </p>
+          <div className="mt-4 space-y-4">
+            {items.map((item) => (
+              <div key={`review-${item.cartItemId ?? item.productId}`} className="rounded-2xl bg-white/80 p-4 text-sm text-[#76504a]">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-semibold text-[#7A3F63]">{item.name}</p>
+                  <p>Qty: {item.itemType === "custom_necklace" ? 1 : item.quantity}</p>
+                </div>
+                {item.itemType !== "custom_necklace" ? (
+                  <div className="mt-2 space-y-1">
+                    {item.selectedFinish ? <p>Finish: {item.selectedFinish}</p> : null}
+                    {item.selectedColor ? <p>Color: {item.selectedColor}</p> : null}
+                    {item.selectedSize ? <p>{item.sizeLabel ?? "Size"}: {item.selectedSize}</p> : null}
+                    {item.customLength ? <p>{item.customLengthLabel ?? "Custom length"}: {item.customLength}</p> : null}
+                    <p className="font-semibold text-[#7A3F63]">
+                      Material: {getFinishLabel(item.finishType) ?? "Details will be confirmed"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-1">
+                    <p>{item.chainLength ? `${item.chain.name} · ${item.chainLength}` : item.chain.name}</p>
+                    {getCheckoutCustomMaterialSummary(item) ? (
+                      <p className="font-semibold text-[#7A3F63]">{getCheckoutCustomMaterialSummary(item)}</p>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {materialTypes.length > 0 ? (
+            <div className="mt-5 space-y-3">
+              {materialTypes.map((material) => (
+                <div key={material} className="rounded-2xl border border-[#ecd7a9] bg-[#fffaf0] p-4">
+                  <p className="font-semibold text-[#7A3F63]">{getMaterialLabel(material)}</p>
+                  <p className="mt-2 text-sm leading-6 text-[#76504a]">{getMaterialCareCopy(material)}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <label className="mt-5 flex items-start gap-3 rounded-2xl border border-[#efccd4] bg-white p-4 text-sm leading-6 text-[#76504a]">
+            <input
+              type="checkbox"
+              checked={materialAcknowledged}
+              onChange={(event) => {
+                setMaterialAcknowledged(event.target.checked);
+                if (event.target.checked) setMessage("");
+              }}
+              className="mt-1 h-4 w-4 accent-[#d38aa0]"
+            />
+            <span>I have reviewed the material and care information for the items in my order and understand the materials I am ordering.</span>
+          </label>
+        </section>
         {message ? (
           <div className="rounded-2xl border border-[#efd2bc] bg-[#fff7ef] p-4 text-sm font-semibold text-[#76504a] sm:col-span-2">
             {message}

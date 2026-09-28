@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Button } from "@/components/button";
 import { FinishBadge, getFinishLabel } from "@/components/finish-badge";
 import { ProductImageGallery } from "@/components/product/product-image-gallery";
 import { ProductPurchaseOptions } from "@/components/product/product-purchase-options";
@@ -45,7 +44,7 @@ export function ProductDetailExperience({ product }: { product: CatalogProduct }
           <FinishBadge finishType={effectiveMaterial} />
           {product.tags.map((tag) => <span key={tag} className="rounded-full bg-[#fff1f6] px-3 py-1 text-xs font-semibold text-rose">{tag}</span>)}
         </div>
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <div className="mt-8">
           <ProductPurchaseOptions
             item={{
               productId: product.id,
@@ -67,7 +66,6 @@ export function ProductDetailExperience({ product }: { product: CatalogProduct }
             customLengthHelpText={product.customLengthHelpText}
             fixedSizeNote={product.fixedSizeNote}
           />
-          <Button href="/checkout" variant="secondary">Request Order</Button>
         </div>
         {getFinishLabel(effectiveMaterial) ? (
           <div className="mt-8 rounded-2xl border border-[#e8c891] bg-[#fff8e8] p-4">

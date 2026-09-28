@@ -50,7 +50,7 @@ export function VariantImageUploader({
   if (!productId || !variantId) {
     return (
       <div className="mt-4 rounded-2xl border border-[#efd2bc] bg-[#fff7ef] p-3 text-xs font-medium text-[#76504a]">
-        Save the product first to upload photos for {label}.
+        Save the product first before uploading variant photos.
       </div>
     );
   }
@@ -112,7 +112,7 @@ export function VariantImageUploader({
       }
       setIsUploading(false);
       setIsError(true);
-      setMessage("The image could not be uploaded to storage. Please try again.");
+      setMessage("The image could not be uploaded. Please try again.");
       return;
     }
 
@@ -132,7 +132,7 @@ export function VariantImageUploader({
             );
             if (attached.length) setImages((current) => [...current, ...attached]);
             setIsError(true);
-            setMessage(result.message);
+            setMessage("The image uploaded, but it could not be attached to this variant.");
             return;
           }
           attached.push(result.image);
@@ -142,7 +142,7 @@ export function VariantImageUploader({
         setPreviewUrls([]);
         if (inputRef.current) inputRef.current.value = "";
         setIsError(false);
-        setMessage(attached.length === 1 ? "Photo uploaded." : "Photos uploaded.");
+        setMessage("Photo uploaded.");
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
           console.error("[admin variants] Image attachment request failed.", {
@@ -206,7 +206,7 @@ export function VariantImageUploader({
       </button>
       {!message ? (
         <span className="ml-3 text-xs font-medium text-[#8f5574]">
-          {isUploading || isPending ? "Uploading..." : "Ready to upload"}
+          {isUploading || isPending ? "Uploading..." : "Choose photos to upload."}
         </span>
       ) : null}
       {message ? (

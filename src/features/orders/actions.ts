@@ -50,6 +50,8 @@ const orderFailureMessage =
   "We couldn't submit your order request. Please try again or contact us through Instagram/Facebook.";
 const invalidCartMessage =
   "Some cart items are missing product details. Please remove and add them again.";
+const materialAcknowledgmentMessage =
+  "Please confirm that you have reviewed the material and care information before submitting your order request.";
 
 function logOrderFailure(
   step: string,
@@ -340,6 +342,14 @@ export async function submitOrderRequest(
     return { success: false, message: disconnectedMessage };
   }
 
+  if (clean(formData.get("material_acknowledged")) !== "true") {
+    logCheckoutStep("result", {
+      failureReasonCode: "material_acknowledgment_missing",
+      result: "failure",
+    });
+    return { success: false, message: materialAcknowledgmentMessage };
+  }
+
   const customerFields = validateCustomerFields(formData);
 
   if (!customerFields.success) {
@@ -549,6 +559,7 @@ export async function submitOrderRequest(
     order_notes: customerFields.orderNotes,
     subtotal,
     estimated_total: subtotal,
+    material_acknowledged_at: new Date().toISOString(),
   };
 
   const { error: orderError } = await supabase
