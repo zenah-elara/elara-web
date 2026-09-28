@@ -5,6 +5,11 @@ import {
 } from "@/components/admin/product-setup-fields";
 import { ProductSizeLengthFields } from "@/components/admin/product-size-length-fields";
 import { ProductVariantsFields } from "@/components/admin/product-variants-fields";
+import {
+  NonVariantOnly,
+  ProductVariantFormProvider,
+  VariantOnly,
+} from "@/components/admin/product-variant-form-context";
 import { SectionHeader } from "@/components/section-header";
 import {
   deleteProductImage,
@@ -61,6 +66,7 @@ export default async function EditProductPage({
       ) : null}
 
       <form action={updateProduct.bind(null, product.id)} className="mt-8 space-y-6 rounded-3xl boutique-card p-6">
+        <ProductVariantFormProvider defaultHasVariants={product.has_variants}>
         <ProductSetupGuide />
         <div className="grid gap-5 md:grid-cols-2">
           <label className="block">
@@ -84,10 +90,29 @@ export default async function EditProductPage({
           defaultBuilderPriceTier={product.builder_price_tier}
         />
 
+        <ProductVariantsFields
+          productId={product.id}
+          productName={product.name}
+          basePrice={Number(product.price)}
+          defaultVariants={(product.product_variants ?? []).map((variant) => ({
+            clientKey: variant.id,
+            id: variant.id,
+            finish: variant.finish,
+            color: variant.color,
+            stockQuantity: variant.stock_quantity,
+            priceOverride: variant.price_override === null ? null : Number(variant.price_override),
+            materialTypeOverride: variant.material_type_override,
+            isActive: variant.is_active,
+            sortOrder: variant.sort_order,
+            images: (variant.product_images ?? []).map((image) => ({ id: image.id, imageUrl: image.image_url, altText: image.alt_text })),
+          }))}
+        />
+
         <div className="grid gap-5 md:grid-cols-3">
           <label className="block">
             <span className="text-sm font-semibold text-cocoa">Price</span>
             <input name="price" type="number" min="0" step="0.01" defaultValue={Number(product.price)} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
+            <VariantOnly><span className="mt-2 block text-xs font-normal text-[#76504a]">This price applies to all variants unless a specific variant has a different price.</span></VariantOnly>
           </label>
           <label className="block">
             <span className="text-sm font-semibold text-cocoa">SKU</span>
@@ -97,10 +122,12 @@ export default async function EditProductPage({
             <span className="text-sm font-semibold text-cocoa">Sort order</span>
             <input name="sort_order" type="number" defaultValue={product.sort_order ?? 0} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
           </label>
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">Stock quantity</span>
-            <input name="stock_quantity" type="number" min="0" defaultValue={product.stock_quantity} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
-          </label>
+          <NonVariantOnly>
+            <label className="block">
+              <span className="text-sm font-semibold text-cocoa">Stock quantity</span>
+              <input name="stock_quantity" type="number" min="0" defaultValue={product.stock_quantity} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
+            </label>
+          </NonVariantOnly>
           <label className="block">
             <span className="text-sm font-semibold text-cocoa">Low stock threshold</span>
             <input name="low_stock_threshold" type="number" min="0" defaultValue={product.low_stock_threshold} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
@@ -186,29 +213,7 @@ export default async function EditProductPage({
           defaultCustomLengthHelpText={product.custom_length_help_text}
         />
 
-        <ProductVariantsFields
-          defaultEnabled={product.has_variants}
-          productName={product.name}
-          basePrice={Number(product.price)}
-          defaultVariants={(product.product_variants ?? []).map((variant) => ({
-            clientKey: variant.id,
-            id: variant.id,
-            finish: variant.finish,
-            color: variant.color,
-            stockQuantity: variant.stock_quantity,
-            priceOverride: variant.price_override === null ? null : Number(variant.price_override),
-            materialTypeOverride: variant.material_type_override,
-            isActive: variant.is_active,
-            sortOrder: variant.sort_order,
-            images: (variant.product_images ?? []).map((image) => ({
-              id: image.id,
-              imageUrl: image.image_url,
-              altText: image.alt_text,
-            })),
-          }))}
-        />
-
-        <div className="grid gap-5 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5 md:grid-cols-2">
+        <NonVariantOnly><div className="grid gap-5 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5 md:grid-cols-2">
           <label className="block">
             <span className="text-sm font-semibold text-cocoa">Upload more images</span>
             <input name="images" type="file" accept="image/*" multiple className="mt-2 w-full text-sm text-[#76504a]" />
@@ -224,15 +229,23 @@ export default async function EditProductPage({
             <input name="image_is_primary" type="checkbox" className="h-4 w-4" />
             Mark first uploaded image as primary
           </label>
-        </div>
+        </div></NonVariantOnly>
+        <VariantOnly>
+          <p className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-4 text-xs leading-5 text-[#76504a]">
+            Add each combination&apos;s photos in its variant card. Optional shared fallback photos are managed below after saving.
+          </p>
+        </VariantOnly>
 
         <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d38aa0] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(201,130,149,0.22)]">
           Save product
         </button>
+        </ProductVariantFormProvider>
       </form>
 
       <section className="mt-8 rounded-3xl boutique-card p-6">
-        <h2 className="text-2xl font-semibold text-cocoa">Images</h2>
+        <details open={!product.has_variants}>
+        <summary className="cursor-pointer text-2xl font-semibold text-cocoa">{product.has_variants ? "Shared product photos" : "Images"}</summary>
+        {product.has_variants ? <p className="mt-2 text-sm text-[#76504a]">Optional. These photos are used as a fallback when a variant does not have its own photos.</p> : null}
         <form action={uploadProductImageAction.bind(null, product.id)} className="mt-5 grid gap-4 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-4 md:grid-cols-3">
           <label className="block text-sm text-[#76504a]">
             <input name="images" type="file" accept="image/*" multiple required className="w-full text-sm text-[#76504a]" />
@@ -267,6 +280,7 @@ export default async function EditProductPage({
             </div>
           ))}
         </div>
+        </details>
       </section>
 
       <section className="mt-8 rounded-3xl border border-[#efccd4] bg-white/82 p-6 shadow-sm">

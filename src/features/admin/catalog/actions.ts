@@ -160,29 +160,6 @@ async function syncProductVariants(productId: string, formData: FormData) {
       variantId = (data as { id: string }).id;
     }
     retainedIds.push(variantId);
-    const files = formData
-      .getAll(`variant_images_${value.clientKey}`)
-      .filter((entry): entry is File => entry instanceof File && entry.size > 0);
-
-    for (const [imageIndex, image] of files.entries()) {
-      validateProductImage(image);
-      const filePath = `products/${productId}/variants/${variantId}/${Date.now()}-${imageIndex}-${safeImageFileName(image.name, "variant-image")}`;
-      const { error: uploadError } = await supabase.storage
-        .from(productImagesBucket)
-        .upload(filePath, image, { upsert: false, contentType: image.type || undefined });
-
-      if (uploadError) throw new Error(imageStorageSetupMessage);
-      const { data: publicUrl } = supabase.storage.from(productImagesBucket).getPublicUrl(filePath);
-      const { error: imageError } = await supabase.from("product_images").insert({
-        product_id: productId,
-        variant_id: variantId,
-        image_url: publicUrl.publicUrl,
-        alt_text: `${payload.finish ?? ""} ${payload.color ?? ""}`.trim() || null,
-        sort_order: imageIndex,
-        is_primary: imageIndex === 0,
-      } as never);
-      if (imageError) throw new Error("Variant image could not be saved.");
-    }
   }
 
   const { data: existing } = await supabase
@@ -195,11 +172,6 @@ async function syncProductVariants(productId: string, formData: FormData) {
 
   if (omittedIds.length) {
     await supabase.from("product_variants").update({ is_active: false } as never).in("id", omittedIds);
-  }
-
-  const removeImageIds = formData.getAll("remove_variant_image_ids").map(String).filter(Boolean);
-  if (removeImageIds.length) {
-    await supabase.from("product_images").delete().eq("product_id", productId).in("id", removeImageIds);
   }
 }
 
@@ -230,6 +202,160 @@ async function getAuthorizedSupabase() {
   }
 
   return supabase;
+}
+
+export type VariantImageActionResult = {
+  success: boolean;
+  message: string;
+  image?: { id: string; imageUrl: string; altText: string | null };
+};
+
+function variantImageSetupMessage(error?: { code?: string; message?: string } | null) {
+  const detail = `${error?.code ?? ""} ${error?.message ?? ""}`.toLowerCase();
+  return detail.includes("product_variants") || detail.includes("variant_id") || detail.includes("does not exist")
+    ? "Variant images are not available because the required database migration has not been applied."
+    : "The image uploaded, but it could not be attached to this variant.";
+}
+
+export async function attachVariantProductImage(
+  productId: string,
+  variantId: string,
+  formData: FormData,
+): Promise<VariantImageActionResult> {
+  try {
+    const supabase = await getAuthorizedSupabase();
+    const imageUrl = String(formData.get("image_url") ?? "").trim();
+    const altText = String(formData.get("alt_text") ?? "").trim() || null;
+
+    if (!imageUrl || !imageUrl.includes("/storage/v1/object/public/product-images/")) {
+      return { success: false, message: "The uploaded image URL is invalid." };
+    }
+
+    const { data: variant, error: variantError } = await supabase
+      .from("product_variants")
+      .select("id")
+      .eq("id", variantId)
+      .eq("product_id", productId)
+      .maybeSingle();
+    if (variantError || !variant) {
+      return { success: false, message: variantImageSetupMessage(variantError) };
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from("product_images")
+      .select("id, sort_order, is_primary")
+      .eq("product_id", productId)
+      .eq("variant_id", variantId)
+      .order("sort_order", { ascending: false });
+    if (existingError) {
+      return { success: false, message: variantImageSetupMessage(existingError) };
+    }
+
+    const rows = (existing ?? []) as { id: string; sort_order: number; is_primary: boolean }[];
+    const { data: image, error: insertError } = await supabase
+      .from("product_images")
+      .insert({
+        product_id: productId,
+        variant_id: variantId,
+        image_url: imageUrl,
+        alt_text: altText,
+        sort_order: (rows[0]?.sort_order ?? -1) + 1,
+        is_primary: !rows.some((row) => row.is_primary),
+      } as never)
+      .select("id, image_url, alt_text")
+      .single();
+    if (insertError || !image) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[admin variants] Image record insert failed.", {
+          productId,
+          variantId,
+          code: insertError?.code,
+          message: insertError?.message,
+        });
+      }
+      return { success: false, message: variantImageSetupMessage(insertError) };
+    }
+
+    revalidatePath(`/admin/products/${productId}/edit`);
+    revalidateStorefrontCatalog();
+    const saved = image as { id: string; image_url: string; alt_text: string | null };
+    return {
+      success: true,
+      message: "Photo uploaded.",
+      image: { id: saved.id, imageUrl: saved.image_url, altText: saved.alt_text },
+    };
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[admin variants] Image attachment failed.", {
+        productId,
+        variantId,
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+    return { success: false, message: "The image uploaded, but it could not be attached to this variant." };
+  }
+}
+
+export async function removeVariantProductImage(
+  productId: string,
+  variantId: string,
+  imageId: string,
+): Promise<VariantImageActionResult> {
+  try {
+    const supabase = await getAuthorizedSupabase();
+    const { data: image, error: lookupError } = await supabase
+      .from("product_images")
+      .select("id, image_url, is_primary")
+      .eq("id", imageId)
+      .eq("product_id", productId)
+      .eq("variant_id", variantId)
+      .maybeSingle();
+    if (lookupError || !image) {
+      return { success: false, message: "This variant photo could not be found." };
+    }
+
+    const current = image as { id: string; image_url: string; is_primary: boolean };
+    const { error: deleteError } = await supabase
+      .from("product_images")
+      .delete()
+      .eq("id", imageId)
+      .eq("product_id", productId)
+      .eq("variant_id", variantId);
+    if (deleteError) return { success: false, message: "This variant photo could not be removed." };
+
+    if (current.is_primary) {
+      const { data: replacement } = await supabase
+        .from("product_images")
+        .select("id")
+        .eq("product_id", productId)
+        .eq("variant_id", variantId)
+        .order("sort_order", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (replacement) {
+        await supabase.from("product_images").update({ is_primary: true } as never).eq("id", (replacement as { id: string }).id);
+      }
+    }
+
+    const marker = "/storage/v1/object/public/product-images/";
+    const storagePath = current.image_url.includes(marker)
+      ? decodeURIComponent(current.image_url.split(marker)[1].split("?")[0])
+      : null;
+    if (storagePath) await supabase.storage.from(productImagesBucket).remove([storagePath]);
+
+    revalidatePath(`/admin/products/${productId}/edit`);
+    revalidateStorefrontCatalog();
+    return { success: true, message: "Photo removed." };
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[admin variants] Image removal failed.", {
+        productId,
+        variantId,
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+    return { success: false, message: "This variant photo could not be removed." };
+  }
 }
 
 function revalidateStorefrontCatalog(slug?: string | null) {
@@ -603,6 +729,12 @@ export async function createProduct(formData: FormData) {
 
   revalidatePath("/admin/products");
   revalidateStorefrontCatalog(createdProduct.slug);
+  if (formData.get("has_variants") === "on") {
+    redirectWithMessage(
+      `/admin/products/${productId}/edit`,
+      "Product saved. You can now upload photos for each variant.",
+    );
+  }
   redirectWithMessage("/admin/products", "Product saved.");
 }
 

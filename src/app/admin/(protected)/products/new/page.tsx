@@ -5,6 +5,11 @@ import {
 } from "@/components/admin/product-setup-fields";
 import { ProductSizeLengthFields } from "@/components/admin/product-size-length-fields";
 import { ProductVariantsFields } from "@/components/admin/product-variants-fields";
+import {
+  NonVariantOnly,
+  ProductVariantFormProvider,
+  VariantOnly,
+} from "@/components/admin/product-variant-form-context";
 import { createProduct } from "@/features/admin/catalog/actions";
 import { getAdminCollections } from "@/features/admin/catalog/queries";
 
@@ -33,19 +38,28 @@ export default async function NewProductPage({
         </div>
       ) : null}
       <form action={createProduct} className="mt-8 space-y-6 rounded-3xl boutique-card p-6">
+        <ProductVariantFormProvider defaultHasVariants={false}>
         <ProductSetupGuide />
         <div className="grid gap-5 md:grid-cols-2">
           <ProductBaseFields />
         </div>
         <ProductSetupFields collections={collections} />
+        <ProductVariantsFields />
         <ProductDetailFields />
         <MaterialDisclosureFields />
         <ProductSizeLengthFields />
-        <ProductVariantsFields />
-        <ImageUploadFields />
+        <NonVariantOnly><ImageUploadFields /></NonVariantOnly>
+        <VariantOnly>
+          <details className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
+            <summary className="cursor-pointer text-sm font-semibold text-[#7A3F63]">Optional shared product photos</summary>
+            <p className="mt-2 text-xs text-[#76504a]">Variant photos are added after the product and its combinations are saved.</p>
+            <div className="mt-4"><ImageUploadFields /></div>
+          </details>
+        </VariantOnly>
         <button className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#d38aa0] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(201,130,149,0.22)]">
           Create product
         </button>
+        </ProductVariantFormProvider>
       </form>
     </section>
   );
@@ -109,6 +123,7 @@ function ProductDetailFields() {
       <label className="block">
         <span className="text-sm font-semibold text-cocoa">Price</span>
         <input name="price" type="number" min="0" step="0.01" defaultValue="0" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
+        <VariantOnly><span className="mt-2 block text-xs font-normal text-[#76504a]">This price applies to all variants unless a specific variant has a different price.</span></VariantOnly>
       </label>
       <label className="block">
         <span className="text-sm font-semibold text-cocoa">SKU</span>
@@ -118,10 +133,12 @@ function ProductDetailFields() {
         <span className="text-sm font-semibold text-cocoa">Sort order</span>
         <input name="sort_order" type="number" defaultValue="0" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
       </label>
-      <label className="block">
-        <span className="text-sm font-semibold text-cocoa">Stock quantity</span>
-        <input name="stock_quantity" type="number" min="0" defaultValue="0" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
-      </label>
+      <NonVariantOnly>
+        <label className="block">
+          <span className="text-sm font-semibold text-cocoa">Stock quantity</span>
+          <input name="stock_quantity" type="number" min="0" defaultValue="0" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
+        </label>
+      </NonVariantOnly>
       <label className="block">
         <span className="text-sm font-semibold text-cocoa">Low stock threshold</span>
         <input name="low_stock_threshold" type="number" min="0" defaultValue="3" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
