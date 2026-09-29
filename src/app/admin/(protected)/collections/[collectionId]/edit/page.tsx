@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { SectionHeader } from "@/components/section-header";
 import { CollectionPublishControl } from "@/components/admin/collection-publishing-controls";
+import { CollectionImageUploader } from "@/components/admin/collection-image-uploader";
 import {
   deleteCollection,
   updateCollection,
@@ -58,59 +59,6 @@ export default async function EditCollectionPage({
           <span className="text-sm font-semibold text-cocoa">Sort order</span>
           <input name="sort_order" type="number" defaultValue={collection.sort_order ?? 0} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
         </label>
-        <div className="grid gap-4 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
-          <div>
-            <p className="text-sm font-semibold text-cocoa">
-              Current thumbnail
-            </p>
-            <div className="mt-3 overflow-hidden rounded-2xl bg-[#fff1f6]">
-              {collection.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={collection.image_url}
-                  alt={collection.image_alt_text ?? collection.name}
-                  className="h-56 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-40 items-center justify-center px-6 text-center text-sm font-semibold text-[#9A4F78]">
-                  No collection thumbnail uploaded yet.
-                </div>
-              )}
-            </div>
-          </div>
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">
-              Replace thumbnail image
-            </span>
-            <input
-              name="collection_image"
-              type="file"
-              accept="image/*"
-              className="mt-2 w-full text-sm text-[#76504a]"
-            />
-            <span className="mt-2 block text-xs font-medium text-[#8f4f68]">
-              Upload a JPG, PNG, or WebP image under 8 MB.
-            </span>
-          </label>
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">
-              Image alt text
-            </span>
-            <input
-              name="image_alt_text"
-              defaultValue={collection.image_alt_text ?? ""}
-              className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none"
-            />
-          </label>
-          <label className="flex items-center gap-3 text-sm font-semibold text-cocoa">
-            <input
-              name="clear_collection_image"
-              type="checkbox"
-              className="h-4 w-4"
-            />
-            Clear current thumbnail
-          </label>
-        </div>
         <fieldset className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
           <legend className="px-1 text-sm font-semibold text-cocoa">
             Publishing
@@ -152,6 +100,20 @@ export default async function EditCollectionPage({
           Save collection
         </button>
       </form>
+      <section className="mt-6 rounded-3xl boutique-card p-6">
+        <h2 className="text-lg font-semibold text-[#7A3F63]">
+          Collection thumbnail
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-[#8f5574]">
+          Used as the main image for this collection across the storefront.
+        </p>
+        <CollectionImageUploader
+          collectionId={collection.id}
+          collectionName={collection.name}
+          initialImageUrl={collection.image_url}
+          initialAltText={collection.image_alt_text}
+        />
+      </section>
       <form
         action={deleteCollection.bind(null, collection.id)}
         className="mt-6 rounded-3xl border border-[#f0c9d6] bg-[#fff7fa] p-6"

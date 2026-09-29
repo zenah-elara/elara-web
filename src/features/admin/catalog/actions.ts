@@ -95,11 +95,6 @@ function getProductImageFiles(formData: FormData) {
   );
 }
 
-function getSingleImageFile(formData: FormData, key: string) {
-  const image = formData.get(key);
-  return image instanceof File && image.size > 0 ? image : null;
-}
-
 function parseVariantFormValues(formData: FormData): VariantFormValue[] {
   try {
     const parsed = JSON.parse(String(formData.get("variants_json") ?? "[]"));
@@ -265,18 +260,6 @@ function validateProductImage(image: File) {
   if (image.size > maxProductImageBytes || !allowedProductImageTypes.has(image.type)) {
     throw new Error(imageValidationMessage);
   }
-}
-
-function safeImageFileName(name: string, fallback: string) {
-  const extension = name.split(".").pop()?.toLowerCase() || "jpg";
-  const safeName =
-    name
-      .replace(/\.[^/.]+$/, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || fallback;
-
-  return `${safeName}.${extension}`;
 }
 
 async function getAuthorizedSupabase() {
@@ -532,18 +515,12 @@ export async function createCollection(formData: FormData) {
 
   const collection = data as unknown as { id: string; slug: string };
 
-  try {
-    await uploadCollectionImage(collection.id, formData, false);
-  } catch (error) {
-    redirectWithMessage(
-      "/admin/collections",
-      safeImageErrorMessage(error),
-    );
-  }
-
   revalidatePath("/admin/collections");
   revalidateStorefrontCatalog();
-  redirectWithMessage("/admin/collections", "Collection saved.");
+  redirectWithMessage(
+    `/admin/collections/${collection.id}/edit`,
+    "Collection saved. You can now upload a thumbnail.",
+  );
 }
 
 export async function updateCollection(
@@ -570,10 +547,6 @@ export async function updateCollection(
       : new Date().toISOString()
     : previous?.published_at ?? null;
 
-  if (formData.get("clear_collection_image") === "on") {
-    updatePayload.image_url = null;
-  }
-
   const { error } = await supabase
     .from("collections")
     .update(updatePayload as never)
@@ -583,15 +556,6 @@ export async function updateCollection(
     redirectWithMessage(
       `/admin/collections/${collectionId}/edit`,
       "Collection could not be updated.",
-    );
-  }
-
-  try {
-    await uploadCollectionImage(collectionId, formData, false);
-  } catch (error) {
-    redirectWithMessage(
-      `/admin/collections/${collectionId}/edit`,
-      safeImageErrorMessage(error),
     );
   }
 
@@ -607,86 +571,165 @@ export async function updateCollection(
   );
 }
 
-export async function uploadCollectionImage(
+export type CollectionImageActionResult = {
+  success: boolean;
+  message: string;
+  imageUrl?: string | null;
+  altText?: string | null;
+};
+
+function collectionImageStoragePath(imageUrl: string | null | undefined) {
+  const marker = "/storage/v1/object/public/collection-images/";
+
+  if (!imageUrl?.includes(marker)) {
+    return null;
+  }
+
+  return decodeURIComponent(imageUrl.split(marker)[1].split("?")[0]);
+}
+
+function logCollectionImageError(step: string, error: unknown) {
+  if (process.env.NODE_ENV !== "production") {
+    console.error("[admin collections] thumbnail action failed", {
+      step,
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+}
+
+export async function attachCollectionImage(
   collectionId: string,
   formData: FormData,
-  shouldRedirect = true,
-) {
-  const image = getSingleImageFile(formData, "collection_image");
-
-  if (!image) {
-    return;
-  }
-
+): Promise<CollectionImageActionResult> {
   try {
-    validateProductImage(image);
-  } catch {
-    if (shouldRedirect) {
-      redirectWithMessage(
-        `/admin/collections/${collectionId}/edit`,
-        imageValidationMessage,
-      );
+    const supabase = await getAuthorizedSupabase();
+    const imageUrl = String(formData.get("image_url") ?? "").trim();
+    const altText = String(formData.get("alt_text") ?? "").trim() || null;
+
+    if (!collectionImageStoragePath(imageUrl)) {
+      return {
+        success: false,
+        message: "The image uploaded, but it could not be saved to this collection.",
+      };
     }
 
-    throw new Error(imageValidationMessage);
-  }
+    const { data: collection, error: lookupError } = await supabase
+      .from("collections")
+      .select("slug, image_url")
+      .eq("id", collectionId)
+      .maybeSingle();
 
-  const supabase = await getAuthorizedSupabase();
-  const filePath = `collections/${collectionId}/${Date.now()}-${safeImageFileName(
-    image.name,
-    "collection-image",
-  )}`;
-  const { error: uploadError } = await supabase.storage
-    .from(collectionImagesBucket)
-    .upload(filePath, image, {
-      upsert: false,
-      contentType: image.type || undefined,
-    });
-
-  if (uploadError) {
-    if (shouldRedirect) {
-      redirectWithMessage(
-        `/admin/collections/${collectionId}/edit`,
-        "Collection image upload failed. Please check the collection-images storage bucket setup.",
-      );
+    if (lookupError || !collection) {
+      return {
+        success: false,
+        message: "The image uploaded, but it could not be saved to this collection.",
+      };
     }
 
-    throw new Error(imageStorageSetupMessage);
-  }
+    const current = collection as { slug: string; image_url: string | null };
+    const { data: savedCollection, error } = await supabase
+      .from("collections")
+      .update({ image_url: imageUrl, image_alt_text: altText } as never)
+      .eq("id", collectionId)
+      .select("image_url, image_alt_text")
+      .single();
 
-  const { data } = supabase.storage
-    .from(collectionImagesBucket)
-    .getPublicUrl(filePath);
-  const altText =
-    String(formData.get("image_alt_text") ?? "").trim() ||
-    String(formData.get("name") ?? "").trim() ||
-    null;
-  const { error } = await supabase
-    .from("collections")
-    .update({
-      image_url: data.publicUrl,
-      image_alt_text: altText,
-    } as never)
-    .eq("id", collectionId);
-
-  if (error) {
-    if (shouldRedirect) {
-      redirectWithMessage(
-        `/admin/collections/${collectionId}/edit`,
-        "Collection image could not be saved.",
-      );
+    if (error || !savedCollection) {
+      return {
+        success: false,
+        message:
+          error.code === "42501"
+            ? "The thumbnail could not be saved. Please check Admin permissions."
+            : "The image uploaded, but it could not be saved to this collection.",
+      };
     }
 
-    throw new Error("Collection image could not be saved.");
-  }
+    const oldStoragePath = collectionImageStoragePath(current.image_url);
+    const newStoragePath = collectionImageStoragePath(imageUrl);
 
-  if (shouldRedirect) {
+    if (oldStoragePath && oldStoragePath !== newStoragePath) {
+      const { error: cleanupError } = await supabase.storage
+        .from(collectionImagesBucket)
+        .remove([oldStoragePath]);
+
+      if (cleanupError) {
+        logCollectionImageError("old thumbnail cleanup", cleanupError);
+      }
+    }
+
+    revalidatePath("/");
     revalidatePath("/collections");
+    revalidatePath(`/collections/${current.slug}`);
+    revalidatePath("/admin/collections");
     revalidatePath(`/admin/collections/${collectionId}/edit`);
-    redirectWithMessage(
-      `/admin/collections/${collectionId}/edit`,
-      "Collection image uploaded.",
-    );
+
+    return {
+      success: true,
+      message: "Thumbnail saved.",
+      imageUrl,
+      altText,
+    };
+  } catch (error) {
+    logCollectionImageError("attach", error);
+    return {
+      success: false,
+      message: "The image uploaded, but it could not be saved to this collection.",
+    };
+  }
+}
+
+export async function removeCollectionImage(
+  collectionId: string,
+): Promise<CollectionImageActionResult> {
+  try {
+    const supabase = await getAuthorizedSupabase();
+    const { data: collection, error: lookupError } = await supabase
+      .from("collections")
+      .select("slug, image_url")
+      .eq("id", collectionId)
+      .maybeSingle();
+
+    if (lookupError || !collection) {
+      return { success: false, message: "This thumbnail could not be removed." };
+    }
+
+    const current = collection as { slug: string; image_url: string | null };
+    const { data: savedCollection, error } = await supabase
+      .from("collections")
+      .update({ image_url: null, image_alt_text: null } as never)
+      .eq("id", collectionId)
+      .select("id")
+      .single();
+
+    if (error || !savedCollection) {
+      return {
+        success: false,
+        message:
+          error.code === "42501"
+            ? "The thumbnail could not be removed. Please check Admin permissions."
+            : "This thumbnail could not be removed.",
+      };
+    }
+
+    const storagePath = collectionImageStoragePath(current.image_url);
+    if (storagePath) {
+      const { error: cleanupError } = await supabase.storage
+        .from(collectionImagesBucket)
+        .remove([storagePath]);
+      if (cleanupError) {
+        logCollectionImageError("removed thumbnail cleanup", cleanupError);
+      }
+    }
+
+    revalidatePath("/");
+    revalidatePath("/collections");
+    revalidatePath(`/collections/${current.slug}`);
+    revalidatePath("/admin/collections");
+    revalidatePath(`/admin/collections/${collectionId}/edit`);
+    return { success: true, message: "Thumbnail removed.", imageUrl: null };
+  } catch (error) {
+    logCollectionImageError("remove", error);
+    return { success: false, message: "This thumbnail could not be removed." };
   }
 }
 

@@ -51,30 +51,11 @@ function CollectionFields() {
         <span className="text-sm font-semibold text-cocoa">Sort order</span>
         <input name="sort_order" type="number" defaultValue={0} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
       </label>
-      <div className="grid gap-4 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
-        <label className="block">
-          <span className="text-sm font-semibold text-cocoa">
-            Collection thumbnail image
-          </span>
-          <input
-            name="collection_image"
-            type="file"
-            accept="image/*"
-            className="mt-2 w-full text-sm text-[#76504a]"
-          />
-          <span className="mt-2 block text-xs font-medium text-[#8f4f68]">
-            Upload a JPG, PNG, or WebP image under 8 MB.
-          </span>
-        </label>
-        <label className="block">
-          <span className="text-sm font-semibold text-cocoa">
-            Image alt text
-          </span>
-          <input
-            name="image_alt_text"
-            className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none"
-          />
-        </label>
+      <div className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
+        <p className="text-sm font-semibold text-cocoa">Collection thumbnail</p>
+        <p className="mt-2 text-sm leading-6 text-[#8f5574]">
+          Save the collection first before uploading a thumbnail.
+        </p>
       </div>
       <fieldset className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
         <legend className="px-1 text-sm font-semibold text-cocoa">
