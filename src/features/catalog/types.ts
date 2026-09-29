@@ -72,6 +72,22 @@ export type ProductWithRelations = {
               sort_order: number | null;
             }[]
           | null;
+        product_size_inventory:
+          | {
+              id: string;
+              variant_id: string | null;
+              size_label: string;
+              stock_quantity: number;
+            }[]
+          | null;
+      }[]
+    | null;
+  product_size_inventory:
+    | {
+        id: string;
+        variant_id: string | null;
+        size_label: string;
+        stock_quantity: number;
       }[]
     | null;
   product_images:

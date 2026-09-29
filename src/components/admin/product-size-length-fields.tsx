@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useProductVariantMode } from "@/components/admin/product-variant-form-context";
 import type { ProductType } from "@/features/admin/catalog/types";
 
 export type SizeLengthBehavior =
@@ -18,6 +19,7 @@ type ProductSizeLengthFieldsProps = {
   defaultFixedSizeNote?: string | null;
   defaultCustomLengthLabel?: string | null;
   defaultCustomLengthHelpText?: string | null;
+  defaultSizeInventory?: { id: string; size_label: string; stock_quantity: number }[];
 };
 
 const defaultCustomHelp =
@@ -46,7 +48,9 @@ export function ProductSizeLengthFields({
   defaultFixedSizeNote,
   defaultCustomLengthLabel,
   defaultCustomLengthHelpText,
+  defaultSizeInventory = [],
 }: ProductSizeLengthFieldsProps) {
+  const { hasVariants } = useProductVariantMode();
   const [productType, setProductType] =
     useState<ProductType>(defaultProductType);
   const [behavior, setBehavior] = useState<SizeLengthBehavior>(() =>
@@ -66,9 +70,22 @@ export function ProductSizeLengthFields({
   const [customLengthHelpText, setCustomLengthHelpText] = useState(
     defaultCustomLengthHelpText ?? defaultCustomHelp,
   );
+  const [sizeStocks, setSizeStocks] = useState<Record<string, number>>(
+    Object.fromEntries(defaultSizeInventory.map((row) => [row.size_label, row.stock_quantity])),
+  );
   const usesPresets = behavior === "preset" || behavior === "preset_and_custom";
   const usesCustomLength =
     behavior === "custom" || behavior === "preset_and_custom";
+  const presetOptions = sizeOptions.split(",").map((value) => value.trim()).filter(Boolean);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("elara:size-inventory-change", {
+      detail: {
+        behavior,
+        options: sizeOptions.split(",").map((value) => value.trim()).filter(Boolean),
+      },
+    }));
+  }, [behavior, sizeOptions]);
 
   useEffect(() => {
     function handleProductTypeChange(event: Event) {
@@ -178,6 +195,40 @@ export function ProductSizeLengthFields({
               must choose from. Separate options with commas.
             </span>
           </label>
+        </div>
+      ) : null}
+
+      {usesPresets && !hasVariants && presetOptions.length > 0 ? (
+        <div className="mt-5 rounded-2xl border border-[#efccd4] bg-white p-4">
+          <p className="text-sm font-semibold text-[#7A3F63]">Stock by size</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {presetOptions.map((option) => (
+              <label key={option} className="text-xs font-semibold text-[#76504a]">
+                Size {option}
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  value={sizeStocks[option] || ""}
+                  onChange={(event) => setSizeStocks((current) => ({
+                    ...current,
+                    [option]: event.target.value === "" ? 0 : Math.max(0, Math.floor(Number(event.target.value))),
+                  }))}
+                  className="mt-1 w-full rounded-xl border border-[#efccd4] px-3 py-2"
+                />
+              </label>
+            ))}
+          </div>
+          <input
+            type="hidden"
+            name="size_inventory_json"
+            value={JSON.stringify(presetOptions.map((option) => ({
+              variantClientKey: null,
+              sizeLabel: option,
+              stockQuantity: sizeStocks[option] ?? 0,
+            })))}
+          />
         </div>
       ) : null}
 

@@ -24,6 +24,11 @@ type VariantFormValue = {
   isActive: boolean;
   sortOrder: number;
 };
+type SizeInventoryFormValue = {
+  variantClientKey: string | null;
+  sizeLabel: string;
+  stockQuantity: number;
+};
 
 const productImagesBucket = "product-images";
 const collectionImagesBucket = "collection-images";
@@ -132,6 +137,7 @@ async function syncProductVariants(productId: string, formData: FormData) {
   const enabled = formData.get("has_variants") === "on";
   const values = enabled ? parseVariantFormValues(formData) : [];
   const retainedIds: string[] = [];
+  const variantIdsByClientKey = new Map<string, string>();
 
   if (enabled && values.length === 0) {
     throw new Error("Add at least one Finish or Color option before enabling variants.");
@@ -173,6 +179,7 @@ async function syncProductVariants(productId: string, formData: FormData) {
       variantId = (data as { id: string }).id;
     }
     retainedIds.push(variantId);
+    variantIdsByClientKey.set(value.clientKey, variantId);
   }
 
   const { data: existing } = await supabase
@@ -185,6 +192,72 @@ async function syncProductVariants(productId: string, formData: FormData) {
 
   if (omittedIds.length) {
     await supabase.from("product_variants").update({ is_active: false } as never).in("id", omittedIds);
+  }
+  return variantIdsByClientKey;
+}
+
+function parseSizeInventoryValues(formData: FormData): SizeInventoryFormValue[] {
+  const raw = String(formData.get("size_inventory_json") ?? "[]");
+  const parsed = JSON.parse(raw) as unknown;
+  if (!Array.isArray(parsed)) throw new Error("Size inventory could not be saved.");
+  return parsed.map((value) => {
+    const row = value as Partial<SizeInventoryFormValue>;
+    const sizeLabel = String(row.sizeLabel ?? "").trim();
+    const stockQuantity = Number(row.stockQuantity);
+    if (!sizeLabel || !Number.isInteger(stockQuantity) || stockQuantity < 0) {
+      throw new Error("Size stock must be a whole number of 0 or more.");
+    }
+    return { variantClientKey: row.variantClientKey ?? null, sizeLabel, stockQuantity };
+  });
+}
+
+async function syncProductSizeInventory(
+  productId: string,
+  formData: FormData,
+  variantIdsByClientKey: Map<string, string>,
+) {
+  const behavior = String(formData.get("size_length_behavior") ?? "none");
+  const usesPreset = behavior === "preset" || behavior === "preset_and_custom";
+  const supabase = await getAuthorizedSupabase();
+  const desired = usesPreset ? parseSizeInventoryValues(formData) : [];
+  const rows = desired.map((row) => ({
+    product_id: productId,
+    variant_id: row.variantClientKey ? variantIdsByClientKey.get(row.variantClientKey) ?? null : null,
+    size_label: row.sizeLabel,
+    stock_quantity: row.stockQuantity,
+  }));
+  if (rows.some((row, index) => desired[index].variantClientKey && !row.variant_id)) {
+    throw new Error("One or more variant size combinations could not be matched.");
+  }
+
+  const { data: existing, error: existingError } = await supabase.from("product_size_inventory").select("id, variant_id, size_label, stock_quantity").eq("product_id", productId);
+  if (existingError) throw new Error("Size inventory could not be saved. Apply migration 023 first.");
+  const keys = new Set(rows.map((row) => `${row.variant_id ?? "product"}::${row.size_label.toLowerCase()}`));
+  const removed = ((existing ?? []) as { id: string; variant_id: string | null; size_label: string; stock_quantity: number }[])
+    .filter((row) => !keys.has(`${row.variant_id ?? "product"}::${row.size_label.toLowerCase()}`));
+  const stockedRemoved = removed.find((row) => row.stock_quantity > 0);
+  if (stockedRemoved) throw new Error(`Size ${stockedRemoved.size_label} still has stock. Set it to 0 before removing that size.`);
+  // Keep zero-stock removed rows for historical inventory movement references.
+  // They are no longer customer-selectable because size_options is authoritative.
+
+  for (const row of rows) {
+    const match = ((existing ?? []) as { id: string; variant_id: string | null; size_label: string }[]).find(
+      (current) => current.variant_id === row.variant_id && current.size_label.toLowerCase() === row.size_label.toLowerCase(),
+    );
+    const result = match
+      ? await supabase.from("product_size_inventory").update({ size_label: row.size_label, stock_quantity: row.stock_quantity } as never).eq("id", match.id)
+      : await supabase.from("product_size_inventory").insert(row as never);
+    if (result.error) throw new Error("Size inventory could not be saved.");
+  }
+
+  if (usesPreset) {
+    const variantIds = [...new Set(rows.map((row) => row.variant_id).filter((id): id is string => Boolean(id)))];
+    for (const variantId of variantIds) {
+      const total = rows.filter((row) => row.variant_id === variantId).reduce((sum, row) => sum + row.stock_quantity, 0);
+      await supabase.from("product_variants").update({ stock_quantity: total } as never).eq("id", variantId);
+    }
+    const total = rows.reduce((sum, row) => sum + row.stock_quantity, 0);
+    await supabase.from("products").update({ stock_quantity: total } as never).eq("id", productId);
   }
 }
 
@@ -368,6 +441,64 @@ export async function removeVariantProductImage(
       });
     }
     return { success: false, message: "This variant photo could not be removed." };
+  }
+}
+
+export async function attachProductImage(
+  productId: string,
+  formData: FormData,
+): Promise<VariantImageActionResult> {
+  try {
+    const supabase = await getAuthorizedSupabase();
+    const imageUrl = String(formData.get("image_url") ?? "").trim();
+    const altText = String(formData.get("alt_text") ?? "").trim() || null;
+    if (!imageUrl.includes("/storage/v1/object/public/product-images/")) {
+      return { success: false, message: "The image uploaded, but it could not be attached to this product." };
+    }
+    const { data: rows, error: lookupError } = await supabase.from("product_images")
+      .select("id, sort_order, is_primary").eq("product_id", productId).is("variant_id", null)
+      .order("sort_order", { ascending: false });
+    if (lookupError) return { success: false, message: "The image uploaded, but it could not be attached to this product." };
+    const existing = (rows ?? []) as { sort_order: number | null; is_primary: boolean | null }[];
+    const { data, error } = await supabase.from("product_images").insert({
+      product_id: productId, variant_id: null, image_url: imageUrl, alt_text: altText,
+      sort_order: (existing[0]?.sort_order ?? -1) + 1,
+      is_primary: !existing.some((row) => row.is_primary),
+    } as never).select("id, image_url, alt_text").single();
+    if (error || !data) return { success: false, message: "The image uploaded, but it could not be attached to this product." };
+    revalidatePath(`/admin/products/${productId}/edit`);
+    revalidateStorefrontCatalog();
+    const image = data as { id: string; image_url: string; alt_text: string | null };
+    return { success: true, message: "Photo uploaded.", image: { id: image.id, imageUrl: image.image_url, altText: image.alt_text } };
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") console.error("[admin products] image attachment failed", error);
+    return { success: false, message: "The image uploaded, but it could not be attached to this product." };
+  }
+}
+
+export async function removeProductImage(
+  productId: string,
+  imageId: string,
+): Promise<VariantImageActionResult> {
+  try {
+    const supabase = await getAuthorizedSupabase();
+    const { data } = await supabase.from("product_images").select("image_url, is_primary")
+      .eq("id", imageId).eq("product_id", productId).is("variant_id", null).maybeSingle();
+    if (!data) return { success: false, message: "This product photo could not be removed." };
+    const row = data as { image_url: string; is_primary: boolean | null };
+    const { error } = await supabase.from("product_images").delete().eq("id", imageId).eq("product_id", productId).is("variant_id", null);
+    if (error) return { success: false, message: "This product photo could not be removed." };
+    if (row.is_primary) {
+      const { data: replacement } = await supabase.from("product_images").select("id").eq("product_id", productId).is("variant_id", null).order("sort_order").limit(1).maybeSingle();
+      if (replacement) await supabase.from("product_images").update({ is_primary: true } as never).eq("id", (replacement as { id: string }).id);
+    }
+    const marker = "/storage/v1/object/public/product-images/";
+    if (row.image_url.includes(marker)) await supabase.storage.from(productImagesBucket).remove([decodeURIComponent(row.image_url.split(marker)[1].split("?")[0])]);
+    revalidatePath(`/admin/products/${productId}/edit`);
+    revalidateStorefrontCatalog();
+    return { success: true, message: "Photo removed." };
+  } catch {
+    return { success: false, message: "This product photo could not be removed." };
   }
 }
 
@@ -883,7 +1014,8 @@ export async function createProduct(
   await upsertProductTags(productId, parseTags(formData.get("tags")));
 
   try {
-    await syncProductVariants(productId, formData);
+    const variantIds = await syncProductVariants(productId, formData);
+    await syncProductSizeInventory(productId, formData, variantIds);
   } catch (error) {
     await supabase.from("products").delete().eq("id", productId);
     if (process.env.NODE_ENV !== "production") {
@@ -987,7 +1119,8 @@ export async function updateProduct(
   await upsertProductTags(productId, parseTags(formData.get("tags")));
 
   try {
-    await syncProductVariants(productId, formData);
+    const variantIds = await syncProductVariants(productId, formData);
+    await syncProductSizeInventory(productId, formData, variantIds);
   } catch (error) {
     logProductUpdateError({
       productId,

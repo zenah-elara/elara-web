@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import type { CartInput } from "@/features/cart/types";
-import type { ProductVariant } from "@/lib/data";
+import type { ProductSizeInventory, ProductVariant } from "@/lib/data";
 
 type ProductPurchaseOptionsProps = {
   item: Omit<
@@ -22,6 +22,7 @@ type ProductPurchaseOptionsProps = {
   customLengthHelpText?: string | null;
   fixedSizeNote?: string | null;
   variants?: ProductVariant[];
+  sizeInventory?: ProductSizeInventory[];
   onVariantChange?: (variant: ProductVariant | null) => void;
 };
 
@@ -35,6 +36,7 @@ export function ProductPurchaseOptions({
   customLengthHelpText,
   fixedSizeNote,
   variants = [],
+  sizeInventory = [],
   onVariantChange,
 }: ProductPurchaseOptionsProps) {
   const availableOptions = useMemo(
@@ -72,6 +74,14 @@ export function ProductPurchaseOptions({
       (!variant.finish || variant.finish === selectedFinish) &&
       (!variant.color || variant.color === selectedColor),
   ) ?? null;
+  const effectiveSizeInventory = selectedVariant
+    ? selectedVariant.sizeInventory
+    : sizeInventory;
+  const sizeStock = new Map(
+    effectiveSizeInventory.map((row) => [row.sizeLabel, row.stock]),
+  );
+  const selectedSizeStock = selectedSize ? sizeStock.get(selectedSize) : undefined;
+
 
   useEffect(() => {
     onVariantChange?.(selectedVariant);
@@ -82,7 +92,8 @@ export function ProductPurchaseOptions({
     (requiresCustomLength && !trimmedCustomLength) ||
     (finishOptions.length > 0 && !selectedFinish) ||
     (colorOptions.length > 0 && !selectedColor) ||
-    (variants.length > 0 && (!selectedVariant || selectedVariant.stock <= 0));
+    (variants.length > 0 && (!selectedVariant || selectedVariant.stock <= 0)) ||
+    (requiresPreset && selectedSizeStock === 0);
 
   return (
     <div className="space-y-4">
@@ -91,7 +102,7 @@ export function ProductPurchaseOptions({
           <p className="text-sm font-semibold text-[#7A3F63]">Finish</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {finishOptions.map((finish) => (
-              <button key={finish} type="button" onClick={() => setSelectedFinish(finish)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedFinish === finish ? "border-[#d38aa0] bg-[#d38aa0] text-white" : "border-[#efccd4] bg-[#fffaf8] text-[#7A3F63]"}`}>
+              <button key={finish} type="button" onClick={() => { setSelectedFinish(finish); setSelectedSize(""); }} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedFinish === finish ? "border-[#d38aa0] bg-[#d38aa0] text-white" : "border-[#efccd4] bg-[#fffaf8] text-[#7A3F63]"}`}>
                 {finish}
               </button>
             ))}
@@ -103,7 +114,7 @@ export function ProductPurchaseOptions({
           <p className="text-sm font-semibold text-[#7A3F63]">Color</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {colorOptions.map((color) => (
-              <button key={color} type="button" onClick={() => setSelectedColor(color)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedColor === color ? "border-[#d38aa0] bg-[#d38aa0] text-white" : "border-[#efccd4] bg-[#fffaf8] text-[#7A3F63]"}`}>
+              <button key={color} type="button" onClick={() => { setSelectedColor(color); setSelectedSize(""); }} className={`rounded-full border px-4 py-2 text-sm font-semibold ${selectedColor === color ? "border-[#d38aa0] bg-[#d38aa0] text-white" : "border-[#efccd4] bg-[#fffaf8] text-[#7A3F63]"}`}>
                 {color}
               </button>
             ))}
@@ -122,8 +133,8 @@ export function ProductPurchaseOptions({
               Choose {label.toLowerCase()}
             </option>
             {availableOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
+              <option key={option} value={option} disabled={sizeStock.has(option) && sizeStock.get(option) === 0}>
+                {option}{sizeStock.has(option) && sizeStock.get(option) === 0 ? " — Out of stock" : ""}
               </option>
             ))}
           </select>
@@ -161,7 +172,7 @@ export function ProductPurchaseOptions({
           selectedFinish: selectedVariant?.finish ?? null,
           selectedColor: selectedVariant?.color ?? null,
           unitPrice: selectedVariant?.priceOverride ?? item.unitPrice,
-          stockQuantity: selectedVariant?.stock ?? item.stockQuantity,
+          stockQuantity: selectedSizeStock ?? selectedVariant?.stock ?? item.stockQuantity,
           finishType: selectedVariant?.materialTypeOverride ?? item.finishType,
           imageUrl: selectedVariant?.images[0]?.imageUrl ?? item.imageUrl,
           cartItemId: `${item.productId}${selectedVariant ? `-${selectedVariant.id}` : ""}${selectedSize ? `-${selectedSize}` : ""}${

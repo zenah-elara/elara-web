@@ -42,6 +42,7 @@ export type Product = {
   careInstructions?: string;
   hasVariants?: boolean;
   variants?: ProductVariant[];
+  sizeInventory?: ProductSizeInventory[];
 };
 
 export type ProductImage = {
@@ -62,6 +63,14 @@ export type ProductVariant = {
   isActive: boolean;
   sortOrder: number;
   images: ProductImage[];
+  sizeInventory: ProductSizeInventory[];
+};
+
+export type ProductSizeInventory = {
+  id?: string;
+  variantId?: string | null;
+  sizeLabel: string;
+  stock: number;
 };
 
 export const collections: Collection[] = [

@@ -63,4 +63,7 @@ export type AdminInventoryMovement =
     orders: {
       order_number: string;
     } | null;
+    product_size_inventory: {
+      size_label: string;
+    } | null;
   };

@@ -225,6 +225,7 @@ export async function getInventoryMovementsByOrder(
       `
         *,
         products(name, slug),
+        product_size_inventory(size_label),
         orders(order_number)
       `,
     )
@@ -249,6 +250,7 @@ export async function getRecentInventoryMovements(): Promise<
       `
         *,
         products(name, slug),
+        product_size_inventory(size_label),
         orders(order_number)
       `,
     )

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { VariantImageUploader } from "@/components/admin/variant-image-uploader";
 import { useProductVariantMode } from "@/components/admin/product-variant-form-context";
 import { formatPrice } from "@/lib/data";
@@ -16,6 +16,7 @@ export type AdminVariantValue = {
   isActive: boolean;
   sortOrder: number;
   images?: { id: string; imageUrl: string; altText?: string | null }[];
+  sizeInventory?: { id: string; sizeLabel: string; stockQuantity: number }[];
 };
 
 function splitOptions(value: string) {
@@ -35,11 +36,15 @@ export function ProductVariantsFields({
   productId,
   productName = "Product preview",
   basePrice = 0,
+  defaultSizeOptions = [],
+  defaultSizeBehavior = "none",
 }: {
   defaultVariants?: AdminVariantValue[];
   productId?: string;
   productName?: string;
   basePrice?: number;
+  defaultSizeOptions?: string[];
+  defaultSizeBehavior?: "none" | "preset" | "custom" | "preset_and_custom";
 }) {
   const { hasVariants, setHasVariants } = useProductVariantMode();
   const defaultFinishes = [...new Set(defaultVariants.map((v) => v.finish).filter(Boolean))].join(", ");
@@ -47,6 +52,20 @@ export function ProductVariantsFields({
   const [finishesText, setFinishesText] = useState(defaultFinishes);
   const [colorsText, setColorsText] = useState(defaultColors);
   const [variants, setVariants] = useState(defaultVariants);
+  const [presetSizes, setPresetSizes] = useState(defaultSizeOptions);
+  const [usesPresetSizes, setUsesPresetSizes] = useState(
+    defaultSizeBehavior === "preset" || defaultSizeBehavior === "preset_and_custom",
+  );
+
+  useEffect(() => {
+    function handleSizeChange(event: Event) {
+      const detail = (event as CustomEvent<{ behavior: string; options: string[] }>).detail;
+      setUsesPresetSizes(detail.behavior === "preset" || detail.behavior === "preset_and_custom");
+      setPresetSizes(detail.options);
+    }
+    window.addEventListener("elara:size-inventory-change", handleSizeChange);
+    return () => window.removeEventListener("elara:size-inventory-change", handleSizeChange);
+  }, []);
 
   const regenerate = (nextFinishesText: string, nextColorsText: string) => {
     const finishes = splitOptions(nextFinishesText);
@@ -86,11 +105,22 @@ export function ProductVariantsFields({
     isActive: variant.isActive,
     sortOrder: variant.sortOrder,
   })) : [], [hasVariants, variants]);
+  const sizeInventorySerialized = useMemo(() =>
+    hasVariants && usesPresetSizes
+      ? variants.flatMap((variant) => presetSizes.map((sizeLabel) => ({
+          variantClientKey: variant.clientKey,
+          sizeLabel,
+          stockQuantity: variant.sizeInventory?.find((row) => row.sizeLabel === sizeLabel)?.stockQuantity ?? 0,
+        })))
+      : [],
+    [hasVariants, presetSizes, usesPresetSizes, variants],
+  );
 
   return (
     <section className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
       <input type="hidden" name="has_variants" value={hasVariants ? "on" : ""} />
       <input type="hidden" name="variants_json" value={JSON.stringify(serialized)} />
+      {hasVariants && usesPresetSizes ? <input type="hidden" name="size_inventory_json" value={JSON.stringify(sizeInventorySerialized)} /> : null}
       <p className="text-base font-semibold text-[#7A3F63]">Does this product have variants?</p>
       <p className="mt-1 text-xs leading-5 text-[#76504a]">
         Choose Yes when the same product comes in different finishes or colors.
@@ -137,7 +167,7 @@ export function ProductVariantsFields({
                     Active / Available
                   </label>
                 </div>
-                <label className="mt-4 block max-w-xs text-xs font-semibold text-[#76504a]">
+                {!usesPresetSizes ? <label className="mt-4 block max-w-xs text-xs font-semibold text-[#76504a]">
                   Stock
                   <input
                     type="number"
@@ -154,7 +184,30 @@ export function ProductVariantsFields({
                     }}
                     className="mt-1 w-full rounded-xl border border-[#efccd4] px-3 py-2"
                   />
-                </label>
+                </label> : null}
+                {usesPresetSizes && presetSizes.length > 0 ? (
+                  <div className="mt-4 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-4">
+                    <p className="text-xs font-semibold text-[#7A3F63]">Stock by size</p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                      {presetSizes.map((sizeLabel) => {
+                        const currentStock = variant.sizeInventory?.find((row) => row.sizeLabel === sizeLabel)?.stockQuantity ?? 0;
+                        return (
+                          <label key={sizeLabel} className="text-xs font-semibold text-[#76504a]">
+                            Size {sizeLabel}
+                            <input type="number" min="0" step="1" placeholder="0" value={currentStock || ""} onChange={(event) => {
+                              const nextStock = event.target.value === "" ? 0 : Math.max(0, Math.floor(Number(event.target.value)));
+                              const rows = variant.sizeInventory ?? [];
+                              updateVariant(variant.clientKey, { sizeInventory: [
+                                ...rows.filter((row) => row.sizeLabel !== sizeLabel),
+                                { id: rows.find((row) => row.sizeLabel === sizeLabel)?.id ?? "", sizeLabel, stockQuantity: nextStock },
+                              ] });
+                            }} className="mt-1 w-full rounded-xl border border-[#efccd4] px-3 py-2" />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 <VariantImageUploader productId={productId} variantId={variant.id} label={`${productName} - ${label}`} initialImages={variant.images ?? []} />
                 <details className="mt-4 rounded-xl border border-[#f2dde3] bg-[#fffaf8] p-3">
                   <summary className="cursor-pointer text-xs font-semibold text-[#7A3F63]">Advanced options</summary>

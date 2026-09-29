@@ -402,6 +402,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      product_size_inventory: {
+        Row: {
+          id: string;
+          product_id: string;
+          variant_id: string | null;
+          size_label: string;
+          stock_quantity: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          variant_id?: string | null;
+          size_label: string;
+          stock_quantity?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          product_id?: string;
+          variant_id?: string | null;
+          size_label?: string;
+          stock_quantity?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       product_tags: {
         Row: {
           id: string;
@@ -674,6 +704,7 @@ export type Database = {
           id: string;
           product_id: string | null;
           variant_id: string | null;
+          size_inventory_id: string | null;
           order_id: string | null;
           movement_type:
             | "manual_adjustment"
@@ -690,6 +721,7 @@ export type Database = {
           id?: string;
           product_id?: string | null;
           variant_id?: string | null;
+          size_inventory_id?: string | null;
           order_id?: string | null;
           movement_type:
             | "manual_adjustment"
@@ -706,6 +738,7 @@ export type Database = {
           id?: string;
           product_id?: string | null;
           variant_id?: string | null;
+          size_inventory_id?: string | null;
           order_id?: string | null;
           movement_type?:
             | "manual_adjustment"

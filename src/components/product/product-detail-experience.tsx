@@ -65,6 +65,7 @@ export function ProductDetailExperience({ product }: { product: CatalogProduct }
             customLengthLabel={product.customLengthLabel}
             customLengthHelpText={product.customLengthHelpText}
             fixedSizeNote={product.fixedSizeNote}
+            sizeInventory={product.sizeInventory}
           />
         </div>
         {getFinishLabel(effectiveMaterial) ? (

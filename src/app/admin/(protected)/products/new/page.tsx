@@ -12,6 +12,7 @@ import {
 import { ProductCreateForm } from "@/components/admin/product-create-form";
 import { ProductMaterialFields } from "@/components/admin/product-material-fields";
 import { ProductPublishingFields } from "@/components/admin/product-publishing-fields";
+import { ProductStockField } from "@/components/admin/product-stock-field";
 import { getAdminCollections } from "@/features/admin/catalog/queries";
 
 type NewProductPageProps = {
@@ -49,12 +50,16 @@ export default async function NewProductPage({
         <ProductDetailFields />
         <ProductMaterialFields />
         <ProductSizeLengthFields />
-        <NonVariantOnly><ImageUploadFields /></NonVariantOnly>
+        <NonVariantOnly>
+          <p className="rounded-2xl border border-[#efd2bc] bg-[#fff7ef] p-4 text-sm font-medium text-[#76504a]">
+            Save the product first before uploading photos.
+          </p>
+        </NonVariantOnly>
         <VariantOnly>
           <details className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5">
             <summary className="cursor-pointer text-sm font-semibold text-[#7A3F63]">Optional shared product photos</summary>
             <p className="mt-2 text-xs text-[#76504a]">Variant photos are added after the product and its combinations are saved.</p>
-            <div className="mt-4"><ImageUploadFields /></div>
+            <p className="mt-4 text-xs font-medium text-[#76504a]">Save the product first before uploading photos.</p>
           </details>
         </VariantOnly>
       </ProductCreateForm>
@@ -94,12 +99,7 @@ function ProductDetailFields() {
         <input name="sku" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
         <span className="mt-2 block text-xs font-normal text-[#76504a]">Optional internal product code, e.g. RING-001.</span>
       </label>
-      <NonVariantOnly>
-        <label className="block">
-          <span className="text-sm font-semibold text-cocoa">Stock quantity</span>
-          <input name="stock_quantity" type="number" min="0" defaultValue="0" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
-        </label>
-      </NonVariantOnly>
+      <ProductStockField />
       <label className="block">
         <span className="text-sm font-semibold text-cocoa">Low stock threshold</span>
         <input name="low_stock_threshold" type="number" min="0" defaultValue="3" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
@@ -126,28 +126,6 @@ function ProductDetailFields() {
           <span className="mt-2 block text-xs leading-5 text-[#76504a]">Optional manual display priority. Lower numbers appear first where manual sorting is used.</span>
         </label>
       </details>
-    </div>
-  );
-}
-
-function ImageUploadFields() {
-  return (
-    <div className="grid gap-5 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5 md:grid-cols-2">
-      <label className="block">
-        <span className="text-sm font-semibold text-cocoa">Image uploads</span>
-        <input name="images" type="file" accept="image/*" multiple className="mt-2 w-full text-sm text-[#76504a]" />
-        <span className="mt-2 block text-xs font-medium text-[#8f4f68]">
-          Upload JPG, PNG, or WebP images under 8 MB each.
-        </span>
-      </label>
-      <label className="block">
-        <span className="text-sm font-semibold text-cocoa">Image alt text</span>
-        <input name="image_alt_text" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none" />
-      </label>
-      <label className="flex items-center gap-3 text-sm font-semibold text-cocoa">
-        <input name="image_is_primary" type="checkbox" defaultChecked className="h-4 w-4" />
-        Mark first uploaded image as primary
-      </label>
     </div>
   );
 }

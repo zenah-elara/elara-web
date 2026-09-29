@@ -9,6 +9,8 @@ import { ProductMaterialFields } from "@/components/admin/product-material-field
 import { ProductPublishingFields } from "@/components/admin/product-publishing-fields";
 import { ProductPublishControl } from "@/components/admin/product-publish-control";
 import { ProductEditForm } from "@/components/admin/product-edit-form";
+import { ProductStockField } from "@/components/admin/product-stock-field";
+import { ProductImageUploader } from "@/components/admin/product-image-uploader";
 import Link from "next/link";
 import { NonVariantOnly, VariantOnly } from "@/components/admin/product-variant-form-context";
 import { SectionHeader } from "@/components/section-header";
@@ -16,7 +18,6 @@ import {
   deleteProductImage,
   deleteProduct,
   setPrimaryProductImage,
-  uploadProductImageAction,
 } from "@/features/admin/catalog/actions";
 import {
   getAdminCollections,
@@ -103,7 +104,14 @@ export default async function EditProductPage({
             isActive: variant.is_active,
             sortOrder: variant.sort_order,
             images: (variant.product_images ?? []).map((image) => ({ id: image.id, imageUrl: image.image_url, altText: image.alt_text })),
+            sizeInventory: (variant.product_size_inventory ?? []).map((row) => ({
+              id: row.id,
+              sizeLabel: row.size_label,
+              stockQuantity: row.stock_quantity,
+            })),
           }))}
+          defaultSizeOptions={product.size_options ?? []}
+          defaultSizeBehavior={product.size_length_behavior}
         />
 
         <div className="grid gap-5 md:grid-cols-3">
@@ -117,12 +125,10 @@ export default async function EditProductPage({
             <input name="sku" defaultValue={product.sku ?? ""} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
             <span className="mt-2 block text-xs font-normal text-[#76504a]">Optional internal product code, e.g. RING-001.</span>
           </label>
-          <NonVariantOnly>
-            <label className="block">
-              <span className="text-sm font-semibold text-cocoa">Stock quantity</span>
-              <input name="stock_quantity" type="number" min="0" defaultValue={product.stock_quantity} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
-            </label>
-          </NonVariantOnly>
+          <ProductStockField
+            defaultStock={product.stock_quantity}
+            defaultUsesPresetSizes={product.size_length_behavior === "preset" || product.size_length_behavior === "preset_and_custom"}
+          />
           <label className="block">
             <span className="text-sm font-semibold text-cocoa">Low stock threshold</span>
             <input name="low_stock_threshold" type="number" min="0" defaultValue={product.low_stock_threshold} className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-[#fffaf8] px-4 py-3 text-sm text-cocoa outline-none" />
@@ -177,25 +183,14 @@ export default async function EditProductPage({
           defaultFixedSizeNote={product.fixed_size_note}
           defaultCustomLengthLabel={product.custom_length_label}
           defaultCustomLengthHelpText={product.custom_length_help_text}
+          defaultSizeInventory={(product.product_size_inventory ?? []).filter((row) => !row.variant_id)}
         />
 
-        <NonVariantOnly><div className="grid gap-5 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-5 md:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">Upload more images</span>
-            <input name="images" type="file" accept="image/*" multiple className="mt-2 w-full text-sm text-[#76504a]" />
-            <span className="mt-2 block text-xs font-medium text-[#8f4f68]">
-              Upload JPG, PNG, or WebP images under 8 MB each.
-            </span>
-          </label>
-          <label className="block">
-            <span className="text-sm font-semibold text-cocoa">Image alt text</span>
-            <input name="image_alt_text" className="mt-2 w-full rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm text-cocoa outline-none" />
-          </label>
-          <label className="flex items-center gap-3 text-sm font-semibold text-cocoa">
-            <input name="image_is_primary" type="checkbox" className="h-4 w-4" />
-            Mark first uploaded image as primary
-          </label>
-        </div></NonVariantOnly>
+        <NonVariantOnly>
+          <p className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-4 text-xs text-[#76504a]">
+            Product photos are uploaded independently below, so saving product details never sends image files through this form.
+          </p>
+        </NonVariantOnly>
         <VariantOnly>
           <p className="rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-4 text-xs leading-5 text-[#76504a]">
             Add each combination&apos;s photos in its variant card. Optional shared fallback photos are managed below after saving.
@@ -208,20 +203,11 @@ export default async function EditProductPage({
         <details open={!product.has_variants}>
         <summary className="cursor-pointer text-2xl font-semibold text-cocoa">{product.has_variants ? "Shared product photos" : "Images"}</summary>
         {product.has_variants ? <p className="mt-2 text-sm text-[#76504a]">Optional. These photos are used as a fallback when a variant does not have its own photos.</p> : null}
-        <form action={uploadProductImageAction.bind(null, product.id)} className="mt-5 grid gap-4 rounded-2xl border border-[#efccd4] bg-[#fffaf8] p-4 md:grid-cols-3">
-          <label className="block text-sm text-[#76504a]">
-            <input name="images" type="file" accept="image/*" multiple required className="w-full text-sm text-[#76504a]" />
-            <span className="mt-2 block text-xs font-medium text-[#8f4f68]">
-              Upload JPG, PNG, or WebP images under 8 MB each.
-            </span>
-          </label>
-          <input name="image_alt_text" placeholder="Alt text" className="rounded-2xl border border-[#efccd4] bg-white px-4 py-3 text-sm" />
-          <label className="flex items-center gap-3 text-sm font-semibold text-cocoa">
-            <input name="image_is_primary" type="checkbox" className="h-4 w-4" />
-            Make first primary
-          </label>
-          <button className="rounded-full bg-[#d38aa0] px-4 py-2 text-sm font-semibold text-white md:col-span-3">Upload images</button>
-        </form>
+        <ProductImageUploader
+          productId={product.id}
+          productName={product.name}
+          initialImages={images.map((image) => ({ id: image.id, imageUrl: image.image_url, altText: image.alt_text }))}
+        />
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((image) => (
             <div key={image.id} className="rounded-2xl border border-[#efccd4] bg-white/80 p-4">

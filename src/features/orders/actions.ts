@@ -440,6 +440,38 @@ export async function submitOrderRequest(
     (variants as Database["public"]["Tables"]["product_variants"]["Row"][]).map((variant) => [variant.id, variant]),
   );
 
+  const presetItems = regularItems.filter((item) => {
+    const product = productMap.get(item.productId);
+    return product &&
+      (product.size_length_behavior === "preset" ||
+        product.size_length_behavior === "preset_and_custom");
+  });
+  const { data: sizeInventoryRows, error: sizeInventoryError } = presetItems.length
+    ? await supabase
+        .from("product_size_inventory")
+        .select("id, product_id, variant_id, size_label, stock_quantity")
+        .in("product_id", [...new Set(presetItems.map((item) => item.productId))])
+    : { data: [], error: null };
+  if (sizeInventoryError) {
+    logOrderFailure("size inventory availability check", sizeInventoryError);
+    return { success: false, message: "Size availability could not be checked. Please try again." };
+  }
+  for (const item of presetItems) {
+    const row = (sizeInventoryRows ?? []).find((candidate) => {
+      const inventory = candidate as Database["public"]["Tables"]["product_size_inventory"]["Row"];
+      return inventory.product_id === item.productId &&
+        inventory.variant_id === (item.variantId ?? null) &&
+        inventory.size_label.toLowerCase() === (item.selectedSize ?? "").toLowerCase();
+    }) as Database["public"]["Tables"]["product_size_inventory"]["Row"] | undefined;
+    if (!item.selectedSize || !row || row.stock_quantity < item.quantity) {
+      return {
+        success: false,
+        message: `${item.name} is not available in the selected size. Please choose another size.`,
+      };
+    }
+    item.stockQuantity = row.stock_quantity;
+  }
+
   for (const [productId, required] of requiredQuantities) {
     const product = productMap.get(productId);
 

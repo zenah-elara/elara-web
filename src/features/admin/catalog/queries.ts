@@ -69,7 +69,8 @@ export async function getAdminProducts(
         collections(id, name, slug, is_published),
         product_images(*),
         product_tags(*),
-        product_variants(*, product_images(*))
+        product_variants(*, product_images(*), product_size_inventory(*)),
+        product_size_inventory(*)
       `,
     )
     .order("sort_order", { ascending: true })
@@ -121,7 +122,8 @@ export async function getAdminProductById(
         collections(id, name, slug, is_published),
         product_images(*),
         product_tags(*),
-        product_variants(*, product_images(*))
+        product_variants(*, product_images(*), product_size_inventory(*)),
+        product_size_inventory(*)
       `,
     )
     .eq("id", productId)

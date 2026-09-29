@@ -57,6 +57,9 @@ export default async function AdminInventoryPage() {
             >
               <span className="font-semibold text-[#7A3F63]">
                 {movement.products?.name ?? "Product"}
+                {movement.product_size_inventory?.size_label
+                  ? ` · Size ${movement.product_size_inventory.size_label}`
+                  : ""}
               </span>
               <span>{formatMovementType(movement.movement_type)}</span>
               <span

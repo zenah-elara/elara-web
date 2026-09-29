@@ -166,6 +166,21 @@ export function mapProduct(product: ProductWithRelations): CatalogProduct {
             isPrimary: Boolean(image.is_primary),
             sortOrder: image.sort_order,
           })),
+        sizeInventory: (variant.product_size_inventory ?? [])
+          .map((row) => ({
+            id: row.id,
+            variantId: row.variant_id,
+            sizeLabel: row.size_label,
+            stock: row.stock_quantity,
+          })),
+      })),
+    sizeInventory: (product.product_size_inventory ?? [])
+      .filter((row) => !row.variant_id)
+      .map((row) => ({
+        id: row.id,
+        variantId: null,
+        sizeLabel: row.size_label,
+        stock: row.stock_quantity,
       })),
   };
 }
@@ -261,7 +276,8 @@ async function fetchProducts(
         is_new_arrival,
         ${collectionSelect},
         product_images(id, image_url, alt_text, is_primary, sort_order, variant_id),
-        product_variants(id, finish, color, stock_quantity, price_override, material_type_override, is_active, sort_order, product_images(id, image_url, alt_text, is_primary, sort_order)),
+        product_variants(id, finish, color, stock_quantity, price_override, material_type_override, is_active, sort_order, product_images(id, image_url, alt_text, is_primary, sort_order), product_size_inventory(id, variant_id, size_label, stock_quantity)),
+        product_size_inventory(id, variant_id, size_label, stock_quantity),
         product_tags(tag)
       `,
     )
