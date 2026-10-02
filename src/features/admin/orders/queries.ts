@@ -192,10 +192,11 @@ export async function getAdminOrderById(
         *,
         order_items(
           *,
-          products(name, slug, stock_quantity, product_type, product_images(*)),
-          product_variants(material_type_override, product_images(*)),
+          products(name, slug, stock_quantity, product_type, has_variants, size_length_behavior, is_size_customizable, size_options, product_size_inventory(id, variant_id, size_label, stock_quantity), product_images(*)),
+          product_variants(stock_quantity, is_active, material_type_override, product_images(*)),
           custom_necklace_items(
             *,
+            products(name, slug, stock_quantity, product_type, product_images(*)),
             custom_necklace_charms(
               *,
               products(name, slug, stock_quantity, product_type, product_images(*))

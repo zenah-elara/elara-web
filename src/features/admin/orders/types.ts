@@ -7,6 +7,16 @@ export type AdminOrderProductPreview = {
   name: string;
   slug: string;
   stock_quantity: number;
+  has_variants?: boolean;
+  size_length_behavior?: "none" | "preset" | "custom" | "preset_and_custom";
+  is_size_customizable?: boolean;
+  size_options?: string[] | null;
+  product_size_inventory?: {
+    id: string;
+    variant_id: string | null;
+    size_label: string;
+    stock_quantity: number;
+  }[] | null;
   product_type?: Database["public"]["Tables"]["products"]["Row"]["product_type"];
   finish_type?: Database["public"]["Tables"]["products"]["Row"]["finish_type"];
   product_images?: AdminOrderProductImage[] | null;
@@ -35,11 +45,14 @@ export type AdminOrderItem =
   Database["public"]["Tables"]["order_items"]["Row"] & {
     products: AdminOrderProductPreview;
     product_variants: {
+      stock_quantity?: number;
+      is_active?: boolean;
       material_type_override: "gold_plated" | "stainless_steel" | null;
       product_images: AdminOrderProductImage[] | null;
     } | null;
     custom_necklace_items:
       | (Database["public"]["Tables"]["custom_necklace_items"]["Row"] & {
+          products?: AdminOrderProductPreview;
           custom_necklace_charms:
             | (Database["public"]["Tables"]["custom_necklace_charms"]["Row"] & {
                 products: AdminOrderProductPreview;

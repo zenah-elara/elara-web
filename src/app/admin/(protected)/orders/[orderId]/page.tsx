@@ -84,12 +84,22 @@ type StockPreviewRow = {
 function getStockPreviewRows(items: AdminOrderItem[] | null): StockPreviewRow[] {
   return (items ?? []).flatMap((item) => {
     if (item.item_type !== "custom_necklace") {
+      const product = item.products;
+      const usesSizes = product?.size_length_behavior === "preset" ||
+        product?.size_length_behavior === "preset_and_custom" ||
+        (product?.size_length_behavior === "none" && product?.is_size_customizable && Boolean(product.size_options?.length));
+      const sizeRow = product?.product_size_inventory?.find((row) =>
+        row.variant_id === item.variant_id &&
+        row.size_label.trim().toLowerCase() === item.selected_size?.trim().toLowerCase());
+      const stock = usesSizes ? sizeRow?.stock_quantity ?? null :
+        product?.has_variants ? item.product_variants?.stock_quantity ?? null :
+          product?.stock_quantity ?? null;
       return [
         {
           key: item.id,
-          name: item.item_name,
+          name: [item.item_name, item.selected_finish, item.selected_color, item.selected_size].filter(Boolean).join(" · "),
           quantity: item.quantity,
-          stock: item.products?.stock_quantity ?? null,
+          stock,
         },
       ];
     }
@@ -102,7 +112,7 @@ function getStockPreviewRows(items: AdminOrderItem[] | null): StockPreviewRow[] 
           key: `${item.id}-${customItem.id}-chain`,
           name: customItem.chain_name,
           quantity: 1,
-          stock: item.products?.stock_quantity ?? null,
+          stock: customItem.products?.stock_quantity ?? null,
           label: "Chain",
         },
       ];

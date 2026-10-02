@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { sendOrderNotification } from "@/lib/email/send-order-notification";
 import { getMaterialLabel } from "@/lib/materials";
 import { calculateBuilderPricing, getBuilderPricingTotal } from "@/features/builder/pricing";
+import { usesPresetSizeInventory } from "@/features/catalog/availability";
 import { getSupabasePublicServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import type {
@@ -233,10 +234,6 @@ function getRequiredProductQuantities(cartItems: CartItem[]) {
       });
       return;
     }
-
-    if (!item.variantId) {
-      add(item.productId, item.name, item.quantity);
-    }
   });
 
   return quantities;
@@ -446,10 +443,9 @@ export async function submitOrderRequest(
 
   const presetItems = regularItems.filter((item) => {
     const product = productMap.get(item.productId);
-    return product &&
-      (product.size_length_behavior === "preset" ||
-        product.size_length_behavior === "preset_and_custom");
+    return product && usesPresetSizeInventory(product);
   });
+  const sizeQuantities = new Map<string, number>();
   const { data: sizeInventoryRows, error: sizeInventoryError } = presetItems.length
     ? await supabase
         .from("product_size_inventory")
@@ -465,14 +461,16 @@ export async function submitOrderRequest(
       const inventory = candidate as Database["public"]["Tables"]["product_size_inventory"]["Row"];
       return inventory.product_id === item.productId &&
         inventory.variant_id === (item.variantId ?? null) &&
-        inventory.size_label.toLowerCase() === (item.selectedSize ?? "").toLowerCase();
+        inventory.size_label.trim().toLowerCase() === (item.selectedSize ?? "").trim().toLowerCase();
     }) as Database["public"]["Tables"]["product_size_inventory"]["Row"] | undefined;
-    if (!item.selectedSize || !row || row.stock_quantity < item.quantity) {
+    const required = (row ? sizeQuantities.get(row.id) ?? 0 : 0) + item.quantity;
+    if (!item.selectedSize || !row || row.stock_quantity < required) {
       return {
         success: false,
-        message: `${item.name} is not available in the selected size. Please choose another size.`,
+        message: `${item.name} (${item.selectedSize || "selected size"}) is now out of stock or unavailable in this quantity. Please remove it from your cart or choose another size.`,
       };
     }
+    sizeQuantities.set(row.id, required);
     item.stockQuantity = row.stock_quantity;
   }
 
@@ -504,6 +502,9 @@ export async function submitOrderRequest(
     }
   }
 
+  const poolQuantities = new Map(
+    [...requiredQuantities].map(([id, required]) => [id, required.quantity]),
+  );
   for (const item of cartItems) {
     if (item.itemType === "custom_necklace") {
       const chain = productMap.get(item.chain.productId);
@@ -551,7 +552,7 @@ export async function submitOrderRequest(
         !variant ||
         !variant.is_active ||
         variant.product_id !== item.productId ||
-        variant.stock_quantity < item.quantity
+        (!usesPresetSizeInventory(product) && variant.stock_quantity < item.quantity)
       ) {
         return {
           success: false,
@@ -568,6 +569,19 @@ export async function submitOrderRequest(
       item.stockQuantity = variant.stock_quantity;
     } else if (item.variantId) {
       return { success: false, message: `${item.name} has an invalid product option.` };
+    }
+
+    if (!usesPresetSizeInventory(product)) {
+      const poolId = variant && product.has_variants ? variant.id : product.id;
+      const required = (poolQuantities.get(poolId) ?? 0) + item.quantity;
+      const stock = variant && product.has_variants ? variant.stock_quantity : product.stock_quantity;
+      if (stock < required) {
+        return {
+          success: false,
+          message: `${item.name}${variant ? ` (${[variant.finish, variant.color].filter(Boolean).join(" / ")})` : ""} is now out of stock or unavailable in this quantity. Please remove it from your cart before continuing.`,
+        };
+      }
+      poolQuantities.set(poolId, required);
     }
 
     const behavior =

@@ -86,6 +86,10 @@ export async function updateOrderWorkflow(orderId: string, formData: FormData) {
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/products");
   revalidatePath("/admin/inventory");
+  revalidatePath("/");
+  revalidatePath("/shop-products");
+  revalidatePath("/collections", "layout");
+  revalidatePath("/products", "layout");
   redirectWithMessage(
     `/admin/orders/${orderId}`,
     result?.message ?? "Order updated.",

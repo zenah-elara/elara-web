@@ -10,6 +10,7 @@ import type {
   CatalogProduct,
   ProductWithRelations,
 } from "./types";
+import { getSellableProductStock, getSellableVariantStock } from "./availability";
 
 const collectionAccents = new Map(
   mockCollections.map((collection) => [collection.slug, collection.accent]),
@@ -114,11 +115,7 @@ export function mapProduct(product: ProductWithRelations): CatalogProduct {
       isPrimary: Boolean(image.is_primary),
       sortOrder: image.sort_order,
     })),
-    stock: product.has_variants
-      ? (product.product_variants ?? [])
-          .filter((variant) => variant.is_active)
-          .reduce((total, variant) => total + variant.stock_quantity, 0)
-      : product.stock_quantity,
+    stock: getSellableProductStock(product),
     lowStockThreshold: product.low_stock_threshold ?? 3,
     finishType,
     finishNotes: product.finish_notes ?? null,
@@ -150,7 +147,7 @@ export function mapProduct(product: ProductWithRelations): CatalogProduct {
         id: variant.id,
         finish: variant.finish,
         color: variant.color,
-        stock: variant.stock_quantity,
+        stock: getSellableVariantStock(product, variant),
         priceOverride:
           variant.price_override === null
             ? null
@@ -447,7 +444,6 @@ export async function getActiveProducts() {
   const products = await fetchProducts("getActiveProducts", {
     activeOnly: true,
     publishedOnly: true,
-    inStockOnly: true,
     publicVisibility: true,
   });
 
@@ -470,7 +466,6 @@ export async function getFeaturedProducts() {
     activeOnly: true,
     publishedOnly: true,
     featuredOnly: true,
-    inStockOnly: true,
     publicVisibility: true,
   });
 
@@ -482,7 +477,6 @@ export async function getNewArrivalProducts() {
     activeOnly: true,
     publishedOnly: true,
     newArrivalOnly: true,
-    inStockOnly: true,
     publicVisibility: true,
   });
 
@@ -498,7 +492,6 @@ export async function getProductsByCollectionSlug(slug: string) {
     (await fetchProducts("getProductsByCollectionSlug", {
       activeOnly: true,
       publishedOnly: true,
-      inStockOnly: true,
       collectionSlug: slug,
       publicVisibility: true,
     })) ?? []

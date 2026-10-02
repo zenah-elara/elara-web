@@ -22,8 +22,10 @@ type ProductPurchaseOptionsProps = {
   customLengthHelpText?: string | null;
   fixedSizeNote?: string | null;
   variants?: ProductVariant[];
+  hasVariants?: boolean;
   sizeInventory?: ProductSizeInventory[];
   onVariantChange?: (variant: ProductVariant | null) => void;
+  onStockChange?: (stock: number) => void;
 };
 
 export function ProductPurchaseOptions({
@@ -36,8 +38,10 @@ export function ProductPurchaseOptions({
   customLengthHelpText,
   fixedSizeNote,
   variants = [],
+  hasVariants = variants.length > 0,
   sizeInventory = [],
   onVariantChange,
+  onStockChange,
 }: ProductPurchaseOptionsProps) {
   const availableOptions = useMemo(
     () => sizeOptions.map((option) => option.trim()).filter(Boolean),
@@ -78,22 +82,28 @@ export function ProductPurchaseOptions({
     ? selectedVariant.sizeInventory
     : sizeInventory;
   const sizeStock = new Map(
-    effectiveSizeInventory.map((row) => [row.sizeLabel, row.stock]),
+    effectiveSizeInventory.map((row) => [row.sizeLabel.trim().toLowerCase(), row.stock]),
   );
-  const selectedSizeStock = selectedSize ? sizeStock.get(selectedSize) : undefined;
+  const selectedSizeStock = requiresPreset && selectedSize ? sizeStock.get(selectedSize.trim().toLowerCase()) ?? 0 : undefined;
+  const isOutOfStock = (item.stockQuantity ?? 0) <= 0 ||
+    (hasVariants && selectedVariant !== null && selectedVariant.stock <= 0) ||
+    (requiresPreset && selectedSizeStock === 0);
 
 
   useEffect(() => {
     onVariantChange?.(selectedVariant);
   }, [onVariantChange, selectedVariant]);
+  useEffect(() => {
+    onStockChange?.(selectedSizeStock ?? selectedVariant?.stock ?? item.stockQuantity ?? 0);
+  }, [onStockChange, selectedSizeStock, selectedVariant, item.stockQuantity]);
   const trimmedCustomLength = customLength.trim();
   const isMissingRequiredValue =
     (requiresPreset && !selectedSize) ||
     (requiresCustomLength && !trimmedCustomLength) ||
     (finishOptions.length > 0 && !selectedFinish) ||
     (colorOptions.length > 0 && !selectedColor) ||
-    (variants.length > 0 && (!selectedVariant || selectedVariant.stock <= 0)) ||
-    (requiresPreset && selectedSizeStock === 0);
+    (hasVariants && (!selectedVariant || selectedVariant.stock <= 0)) ||
+    isOutOfStock;
 
   return (
     <div className="space-y-4">
@@ -133,8 +143,8 @@ export function ProductPurchaseOptions({
               Choose {label.toLowerCase()}
             </option>
             {availableOptions.map((option) => (
-              <option key={option} value={option} disabled={sizeStock.has(option) && sizeStock.get(option) === 0}>
-                {option}{sizeStock.has(option) && sizeStock.get(option) === 0 ? " — Out of stock" : ""}
+              <option key={option} value={option} disabled={(sizeStock.get(option.trim().toLowerCase()) ?? 0) <= 0}>
+                {option}{(sizeStock.get(option.trim().toLowerCase()) ?? 0) <= 0 ? " — Out of stock" : ""}
               </option>
             ))}
           </select>
@@ -188,7 +198,7 @@ export function ProductPurchaseOptions({
         disabled={isMissingRequiredValue}
         className="min-h-11 w-full px-5"
         label={
-          finishOptions.length > 0 && !selectedFinish
+          isOutOfStock ? "Out of stock" : finishOptions.length > 0 && !selectedFinish
             ? "Choose a finish"
             : colorOptions.length > 0 && !selectedColor
               ? "Choose a color"

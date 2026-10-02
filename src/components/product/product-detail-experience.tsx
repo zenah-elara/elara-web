@@ -11,6 +11,7 @@ import { getMaterialCareInstruction, getMaterialNote } from "@/lib/materials";
 
 export function ProductDetailExperience({ product }: { product: CatalogProduct }) {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedStock, setSelectedStock] = useState(product.stock);
   const handleVariantChange = useCallback((variant: ProductVariant | null) => {
     setSelectedVariant(variant);
   }, []);
@@ -18,7 +19,7 @@ export function ProductDetailExperience({ product }: { product: CatalogProduct }
   const galleryImages = selectedVariant?.images.length ? selectedVariant.images : sharedImages;
   const effectiveMaterial = selectedVariant?.materialTypeOverride ?? product.finishType;
   const effectivePrice = selectedVariant?.priceOverride ?? product.price;
-  const effectiveStock = selectedVariant?.stock ?? product.stock;
+  const effectiveStock = selectedStock;
   const materialDetails = getMaterialNote(effectiveMaterial) ?? product.materialDetails;
   const careInstructions = getMaterialCareInstruction(effectiveMaterial) ?? product.careInstructions;
 
@@ -57,7 +58,9 @@ export function ProductDetailExperience({ product }: { product: CatalogProduct }
               finishType: product.finishType,
             }}
             variants={product.variants}
+            hasVariants={product.hasVariants}
             onVariantChange={handleVariantChange}
+            onStockChange={setSelectedStock}
             sizeLengthBehavior={product.sizeLengthBehavior}
             isSizeCustomizable={product.isSizeCustomizable}
             sizeOptions={product.sizeOptions}

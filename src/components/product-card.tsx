@@ -9,7 +9,7 @@ export function ProductCard({ product }: { product: Product }) {
   const requiresProductOptions =
     (product.sizeLengthBehavior && product.sizeLengthBehavior !== "none") ||
     (product.isSizeCustomizable && Boolean(product.sizeOptions?.length)) ||
-    Boolean(product.hasVariants && product.variants?.length);
+    Boolean(product.hasVariants);
   const finishCount = new Set(product.variants?.map((variant) => variant.finish).filter(Boolean)).size;
   const colorCount = new Set(product.variants?.map((variant) => variant.color).filter(Boolean)).size;
 
