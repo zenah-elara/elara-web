@@ -1,6 +1,9 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import { sendOrderNotification } from "@/lib/email/send-order-notification";
+import { getMaterialLabel } from "@/lib/materials";
+import { calculateBuilderPricing, getBuilderPricingTotal } from "@/features/builder/pricing";
 import { getSupabasePublicServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import type {
@@ -393,7 +396,7 @@ export async function submitOrderRequest(
   const { data: products, error: productError } = await supabase
     .from("products")
     .select(
-      "id, name, price, is_active, has_variants, stock_quantity, is_size_customizable, size_length_behavior, size_options",
+      "id, name, price, finish_type, product_type, builder_price_tier, is_active, has_variants, stock_quantity, is_size_customizable, size_length_behavior, size_options",
     )
     .in("id", productIds);
 
@@ -418,6 +421,7 @@ export async function submitOrderRequest(
       | "is_size_customizable"
       | "size_length_behavior"
       | "size_options"
+      | "finish_type" | "product_type" | "builder_price_tier"
     >[]).map((product) => [product.id, product]),
   );
 
@@ -501,7 +505,34 @@ export async function submitOrderRequest(
   }
 
   for (const item of cartItems) {
-    if (item.itemType === "custom_necklace") continue;
+    if (item.itemType === "custom_necklace") {
+      const chain = productMap.get(item.chain.productId);
+      if (!chain || chain.product_type !== "chain") {
+        return { success: false, message: "This custom piece could not be checked. Please rebuild it." };
+      }
+      item.chain.name = chain.name;
+      item.chain.price = Number(chain.price);
+      item.chain.finishType = chain.finish_type;
+      for (const selected of [...item.selectedItems, ...(item.connector ? [item.connector] : [])]) {
+        const part = productMap.get(selected.productId);
+        if (!part || !["charm", "pendant", "mini_charm", "connector"].includes(part.product_type)) {
+          return { success: false, message: "This custom piece could not be checked. Please rebuild it." };
+        }
+        selected.name = part.name;
+        selected.price = Number(part.price);
+        selected.productType = part.product_type as BuilderSelectedCartItem["productType"];
+        selected.builderPriceTier = part.builder_price_tier;
+        selected.finishType = part.finish_type;
+      }
+      const pricing = calculateBuilderPricing({
+        chain: { builderPriceTier: chain.builder_price_tier },
+        selectedItems: item.selectedItems,
+        connector: item.connector,
+      });
+      if (!pricing) return { success: false, message: "This custom piece could not be checked. Please rebuild it." };
+      item.unitPrice = getBuilderPricingTotal(pricing);
+      continue;
+    }
 
     const product = productMap.get(item.productId);
     if (!product || !product.is_active) {
@@ -511,6 +542,9 @@ export async function submitOrderRequest(
       };
     }
     const variant = item.variantId ? variantMap.get(item.variantId) : null;
+    item.name = product.name;
+    item.unitPrice = Number(product.price);
+    item.finishType = product.finish_type;
 
     if (product.has_variants) {
       if (
@@ -833,6 +867,33 @@ export async function submitOrderRequest(
     orderItemsAttempted: orderItems.length,
     orderItemsInserted: orderItems.length,
     result: "success",
+  });
+
+  await sendOrderNotification({
+    order: { ...orderPayload, id: orderId, order_number: orderNumber },
+    submittedAt: orderPayload.material_acknowledged_at!,
+    items: orderItems.map((savedItem, index) => {
+      const item = cartItems[index];
+      if (item.itemType !== "custom_necklace") {
+        const material = getMaterialLabel(item.finishType);
+        return { savedItem, materials: material ? [material] : [] };
+      }
+      const materials = [...new Set([
+        item.chain.finishType,
+        ...item.selectedItems.map((part) => part.finishType),
+        item.connector?.finishType,
+      ].map(getMaterialLabel).filter((label) => label !== null))];
+      const details = customNecklaceRows.find((row) => row.order_item_id === savedItem.id);
+      return {
+        savedItem, materials,
+        customDetails: details ? [
+          `Chain: ${details.chain_name}`,
+          ...(details.chain_length ? [`Length: ${details.chain_length}`] : []),
+          ...customCharmRows.filter((row) => row.custom_necklace_item_id === details.id)
+            .map((row) => `${row.charm_name} × ${row.quantity}`),
+        ] : [],
+      };
+    }),
   });
 
   return {

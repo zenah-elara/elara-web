@@ -13,6 +13,7 @@ import {
 import { productTypes, type ProductType } from "@/features/admin/catalog/types";
 import { formatPrice } from "@/lib/data";
 import { getAdminProductVisibility } from "@/features/admin/catalog/visibility";
+import { getAdminProductStockTotal } from "@/features/admin/catalog/stock";
 
 type ProductsPageProps = {
   searchParams?: Promise<{
@@ -149,7 +150,7 @@ export default async function AdminProductsPage({
                 <span>{product.product_type}</span>
                 <span>{product.collections?.name ?? "Unassigned"}</span>
                 <span>{formatPrice(Number(product.price))}</span>
-                <span>{product.stock_quantity}</span>
+                <span>{getAdminProductStockTotal(product)}</span>
                 <div>
                   <div className="flex flex-wrap gap-1">
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${product.is_published ? "bg-[#edf7ef] text-[#447451]" : "bg-[#fff1f6] text-[#8f4f68]"}`}>{product.is_published ? "Published" : "Draft"}</span>

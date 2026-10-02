@@ -127,7 +127,7 @@ export function calculateBuilderPricing({
   selectedItems,
   connector,
 }: {
-  chain: CatalogProduct;
+  chain: Pick<CatalogProduct, "builderPriceTier">;
   selectedItems: BuilderSelectedCartItem[];
   connector?: BuilderSelectedCartItem | null;
 }): BuilderPricingSummary | null {

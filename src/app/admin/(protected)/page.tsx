@@ -7,6 +7,7 @@ import {
 import { getCatalogDiagnostics } from "@/features/admin/diagnostics";
 import { getCustomizedEngravedRequestCounts } from "@/features/admin/customized-engraved/queries";
 import { getOrderStatusCounts } from "@/features/admin/orders/queries";
+import { getAdminProductStockTotal } from "@/features/admin/catalog/stock";
 
 const adminCards = [
   {
@@ -77,7 +78,7 @@ export default async function AdminPage() {
   const activeProducts = products.filter((product) => product.is_active).length;
   const inactiveProducts = products.length - activeProducts;
   const lowStockProducts = products.filter(
-    (product) => product.stock_quantity <= product.low_stock_threshold,
+    (product) => getAdminProductStockTotal(product) <= product.low_stock_threshold,
   ).length;
   const publishedCollections = collections.filter(
     (collection) => collection.is_published,

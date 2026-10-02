@@ -7,6 +7,7 @@ import type {
 } from "./types";
 import { mapProduct } from "@/features/catalog/queries";
 import type { CatalogProduct, ProductWithRelations } from "@/features/catalog/types";
+import { getAdminProductStockTotal } from "./stock";
 
 function safeAdminWarning(queryName: string) {
   console.warn(`[admin catalog] ${queryName} failed.`);
@@ -103,7 +104,7 @@ export async function getAdminProducts(
 
   if (filters.lowStock) {
     return products.filter(
-      (product) => product.stock_quantity <= product.low_stock_threshold,
+      (product) => getAdminProductStockTotal(product) <= product.low_stock_threshold,
     );
   }
 
