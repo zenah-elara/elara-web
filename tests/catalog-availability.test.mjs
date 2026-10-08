@@ -61,6 +61,7 @@ test("builder parts retain product stock behavior", () => {
 
 test("regular catalog queries retain sold-out products while builder queries keep stock filters", async () => {
   const queryExports = {};
+  const queryCalls = [];
   const product = {
     ...base, id: "product-a", name: "Ring", slug: "ring", price: 299,
     stock_quantity: 0, is_active: true, is_published: true,
@@ -69,6 +70,8 @@ test("regular catalog queries retain sold-out products while builder queries kee
   };
   const client = { from: () => ({
     select() { return this; }, order() { return this; }, eq() { return this; }, in() { return this; },
+    is(...args) { queryCalls.push(["is",...args]); return this; },
+    limit(...args) { queryCalls.push(["limit",...args]); return this; },
     then(resolve) { resolve({ data: [product], error: null }); },
   }) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync("src/features/catalog/queries.ts", "utf8"), {
@@ -86,7 +89,15 @@ test("regular catalog queries retain sold-out products while builder queries kee
     assert.equal((await queryExports[query]()).length,1,query);
   }
   assert.equal((await queryExports.getProductsByCollectionSlug("rings")).length,1);
+  queryCalls.length = 0;
+  await queryExports.getNewArrivalProducts(4);
+  assert.deepEqual(queryCalls.filter(([method]) => method === "limit").map(([, count, options]) => [count, options?.referencedTable ?? null]),[
+    [1,"product_images"], [1,"product_variants.product_images"], [4,null],
+  ]);
+  assert.ok(queryCalls.some(([method,path,value]) => method === "is" && path === "product_images.variant_id" && value === null));
+  queryCalls.length = 0;
   assert.equal((await queryExports.getProductBySlug("ring")).stock,0);
+  assert.equal(queryCalls.filter(([method]) => method === "limit").length,0,"detail query retains complete galleries");
   assert.equal((await queryExports.getBuilderChains()).length,0);
   product.collections.is_published = false;
   assert.equal((await queryExports.getActiveProducts()).length,0);

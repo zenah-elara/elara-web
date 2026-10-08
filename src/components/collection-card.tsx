@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Collection } from "@/lib/data";
 
 export function CollectionCard({ collection }: { collection: Collection }) {
@@ -11,8 +12,9 @@ export function CollectionCard({ collection }: { collection: Collection }) {
       <div className={`relative h-48 bg-gradient-to-br ${collection.accent}`}>
         {collection.imageUrl ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
+              fill
+              sizes="(max-width: 639px) calc(100vw - 32px), (max-width: 1023px) 50vw, 300px"
               src={collection.imageUrl}
               alt={collection.imageAlt ?? collection.name}
               className="h-full w-full object-cover"

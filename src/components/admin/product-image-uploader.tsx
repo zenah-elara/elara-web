@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useRef, useState, useTransition } from "react";
 import { attachProductImage, removeProductImage } from "@/features/admin/catalog/actions";
@@ -30,8 +31,8 @@ export function ProductImageUploader({ productId, productName, initialImages }: 
     try {
       for (const [index, file] of files.entries()) {
         const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-        const path = `products/${savedProductId}/shared/${Date.now()}-${index}.${ext}`;
-        const { error } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type, upsert: false });
+        const path = `products/${savedProductId}/shared/${crypto.randomUUID()}-${index}.${ext}`;
+        const { error } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type, upsert: false, cacheControl: "31536000" });
         if (error) throw error;
         uploaded.push({ imageUrl: supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl, storagePath: path });
       }
@@ -63,8 +64,7 @@ export function ProductImageUploader({ productId, productName, initialImages }: 
     <button type="button" onClick={upload} disabled={!files.length || uploading || pending} className="mt-3 rounded-full bg-[#d38aa0] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{uploading || pending ? "Uploading..." : "Upload photos"}</button>
     <p className={`mt-2 text-xs font-semibold ${isError ? "text-[#a04462]" : "text-[#447451]"}`}>{message}</p>
     {images.length ? <div className="mt-4 flex flex-wrap gap-3">{images.map((image) => <div key={image.id} className="relative">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={image.imageUrl} alt={image.altText ?? productName} className="h-20 w-20 rounded-xl object-cover" />
+      <Image width={80} height={80} sizes="80px" src={image.imageUrl} alt={image.altText ?? productName} className="h-20 w-20 rounded-xl object-cover" />
       <button type="button" onClick={() => remove(image.id)} disabled={pending} aria-label={`Remove ${productName} photo`} className="absolute -right-1 -top-1 h-6 w-6 rounded-full bg-[#7A3F63] text-white">×</button>
     </div>)}</div> : null}
   </div>;

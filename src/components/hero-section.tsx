@@ -1,4 +1,5 @@
 import { Button } from "./button";
+import Image from "next/image";
 
 type HeroSectionProps = {
   heroImage?: {
@@ -45,8 +46,10 @@ export function HeroSection({ heroImage }: HeroSectionProps) {
           <div className="relative min-h-[390px] overflow-hidden rounded-[2.25rem] bg-[linear-gradient(135deg,#fffaf3_0%,#fde7ef_50%,#fff8f8_100%)] shadow-[0_24px_64px_rgba(211,140,157,0.22)] sm:min-h-[450px] lg:min-h-[520px]">
           {safeHeroImageUrl ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
+                fill
+                sizes="(max-width: 767px) calc(100vw - 72px), (max-width: 1279px) 50vw, 600px"
+                loading="eager"
                 src={safeHeroImageUrl}
                 alt={heroImage?.altText || "elara. jewelry hero image"}
                 className="absolute inset-0 h-full w-full object-cover"

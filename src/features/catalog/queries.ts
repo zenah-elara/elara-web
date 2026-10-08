@@ -229,6 +229,8 @@ async function fetchProducts(
     productTypes?: CatalogProduct["productType"][];
     inStockOnly?: boolean;
     publicVisibility?: boolean;
+    includeGallery?: boolean;
+    limit?: number;
   } = {},
 ) {
   const supabase = getSupabasePublicServerClient();
@@ -280,6 +282,24 @@ async function fetchProducts(
     )
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
+
+  if (!options.includeGallery) {
+    // Listing cards need covers, not every shared and variant gallery image.
+    query = query
+      .is("product_images.variant_id", null)
+      .order("is_primary", { referencedTable: "product_images", ascending: false })
+      .order("sort_order", { referencedTable: "product_images", ascending: true })
+      .order("id", { referencedTable: "product_images", ascending: true })
+      .limit(1, { referencedTable: "product_images" })
+      .order("is_primary", { referencedTable: "product_variants.product_images", ascending: false })
+      .order("sort_order", { referencedTable: "product_variants.product_images", ascending: true })
+      .order("id", { referencedTable: "product_variants.product_images", ascending: true })
+      .limit(1, { referencedTable: "product_variants.product_images" });
+  }
+
+  if (options.limit) {
+    query = query.limit(options.limit);
+  }
 
   if (options.activeOnly) {
     query = query.eq("is_active", true);
@@ -472,11 +492,12 @@ export async function getFeaturedProducts() {
   return products ?? [];
 }
 
-export async function getNewArrivalProducts() {
+export async function getNewArrivalProducts(limit?: number) {
   const products = await fetchProducts("getNewArrivalProducts", {
     activeOnly: true,
     publishedOnly: true,
     newArrivalOnly: true,
+    limit,
     publicVisibility: true,
   });
 
@@ -500,6 +521,7 @@ export async function getProductsByCollectionSlug(slug: string) {
 
 export async function getProductBySlug(slug: string) {
   const products = await fetchProducts("getProductBySlug", {
+    includeGallery: true,
     activeOnly: true,
     publishedOnly: true,
     slug,

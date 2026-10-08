@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const [collections, newArrivals, homepageHero] = await Promise.all([
     getActiveCollections(),
-    getNewArrivalProducts(),
+    getNewArrivalProducts(4),
     getActiveSiteAssetByKey("homepage_hero"),
   ]);
   const featuredCollections = collections.slice(0, 4);
@@ -135,8 +135,8 @@ export default async function Home() {
           />
           <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {newArrivals.length > 0 ? (
-              newArrivals.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              newArrivals.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} sizes="(max-width: 639px) calc(100vw - 56px), (max-width: 1023px) 50vw, 280px" />
               ))
             ) : (
               <div className="rounded-3xl boutique-card p-8 text-sm font-semibold text-[#8F4968] sm:col-span-2 lg:col-span-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { formatPrice } from "@/lib/data";
 import { useCartItems } from "@/features/cart/store";
 import {
@@ -95,12 +96,14 @@ export function CartView() {
               {(item.itemType === "custom_necklace"
                 ? item.chain.imageUrl
                 : item.imageUrl) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
+                  width={96}
+                  height={96}
+                  sizes="96px"
                   src={
                     item.itemType === "custom_necklace"
-                      ? item.chain.imageUrl
-                      : item.imageUrl
+                      ? item.chain.imageUrl ?? ""
+                      : item.imageUrl ?? ""
                   }
                   alt={item.name}
                   className="h-full w-full object-cover"

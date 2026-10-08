@@ -52,8 +52,7 @@ export default async function AdminHomepagePage({
           <p className="text-sm font-semibold text-cocoa">Current preview</p>
           <div className="mt-4 overflow-hidden rounded-2xl bg-[#fff1f6]">
             {heroImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image width={640} height={288} sizes="(max-width: 767px) 100vw, 400px"
                 src={heroImageUrl}
                 alt={heroAsset?.alt_text ?? "Homepage hero preview"}
                 className="h-72 w-full object-cover"
@@ -70,3 +69,4 @@ export default async function AdminHomepagePage({
     </section>
   );
 }
+import Image from "next/image";

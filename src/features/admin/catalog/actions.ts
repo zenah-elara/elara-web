@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { requireAdminUser } from "@/features/auth/queries";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -1368,11 +1369,12 @@ export async function uploadProductImages(
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "") || "product-image";
-    const filePath = `products/${productId}/${Date.now()}-${index}-${safeName}.${extension}`;
+    const filePath = `products/${productId}/${randomUUID()}-${index}-${safeName}.${extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from(productImagesBucket)
       .upload(filePath, image, {
+        cacheControl: "31536000",
         upsert: false,
         contentType: image.type || undefined,
       });

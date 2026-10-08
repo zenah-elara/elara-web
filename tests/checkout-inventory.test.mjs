@@ -98,3 +98,16 @@ test("non-variant size products never consult stale parent totals", async () => 
   });
   assert.equal(result.success,true);
 });
+
+test("custom-length checkout preserves exact variant and ignores stale zero size stock", async () => {
+  const { result, writes } = await checkout([{ ...item, quantity: 1, selectedSize: null, customLength: "17" }], {
+    products: [{ ...product, product_type: "necklace", size_length_behavior: "custom" }],
+    product_variants: [{ ...variant, stock_quantity: 20 }],
+    product_size_inventory: [{ id: "stale-size", product_id: product.id, variant_id: variant.id, size_label: "7", stock_quantity: 0 }],
+  });
+  assert.equal(result.success,true);
+  const saved = writes.find((write) => write.table === "order_items").payload[0];
+  assert.equal(saved.variant_id,variant.id);
+  assert.equal(saved.selected_size,null);
+  assert.equal(saved.selected_custom_length,"17");
+});

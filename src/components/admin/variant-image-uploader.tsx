@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useRef, useState, useTransition } from "react";
 import {
@@ -94,8 +95,9 @@ export function VariantImageUploader({
 
     try {
       for (const [index, file] of files.entries()) {
-        const storagePath = `products/${savedProductId}/variants/${savedVariantId}/${Date.now()}-${index}-${safeFileName(file.name)}`;
+        const storagePath = `products/${savedProductId}/variants/${savedVariantId}/${crypto.randomUUID()}-${index}-${safeFileName(file.name)}`;
         const { error } = await supabase.storage.from(bucket).upload(storagePath, file, {
+          cacheControl: "31536000",
           upsert: false,
           contentType: file.type,
         });
@@ -218,8 +220,7 @@ export function VariantImageUploader({
         <div className="mt-3 flex flex-wrap gap-2">
           {images.map((image) => (
             <div key={image.id} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={image.imageUrl} alt={image.altText ?? label} className="h-16 w-16 rounded-xl object-cover" />
+              <Image width={64} height={64} sizes="64px" src={image.imageUrl} alt={image.altText ?? label} className="h-16 w-16 rounded-xl object-cover" />
               <button type="button" disabled={isPending} onClick={() => remove(image.id)} className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#7A3F63] text-xs text-white" aria-label={`Remove ${label} photo`}>×</button>
             </div>
           ))}

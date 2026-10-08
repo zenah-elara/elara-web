@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { ImagePlaceholder } from "@/components/image-placeholder";
 import type { ProductImage } from "@/lib/data";
 
@@ -44,8 +45,10 @@ export function ProductImageGallery({
   return (
     <div className="space-y-4">
       <div className="relative min-h-[520px] overflow-hidden rounded-[2rem] bg-[#fff1f6] soft-ring">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
+          width={1200}
+          height={1200}
+          sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1279px) 50vw, 600px"
           src={activeImage.imageUrl}
           alt={activeImage.altText ?? productName}
           className="h-full min-h-[520px] w-full object-cover"
@@ -83,8 +86,10 @@ export function ProductImageGallery({
               }`}
               aria-label={`View product image ${index + 1}`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
+                width={240}
+                height={192}
+                sizes="(max-width: 767px) 25vw, 150px"
                 src={image.imageUrl}
                 alt={image.altText ?? productName}
                 className="h-24 w-full object-cover"

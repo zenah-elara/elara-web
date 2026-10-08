@@ -258,8 +258,7 @@ export default async function AdminOrdersPage({
               >
               <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-[#efccd4] bg-[#fff1f6] text-[9px] font-semibold text-[#7A3F63]">
                 {preview.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image width={44} height={44} sizes="44px"
                     src={preview.imageUrl}
                     alt={preview.altText}
                     className="h-full w-full object-cover"
@@ -322,3 +321,4 @@ export default async function AdminOrdersPage({
     </section>
   );
 }
+import Image from "next/image";

@@ -1,11 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { formatPrice, type Product } from "@/lib/data";
 import { FinishBadge } from "./finish-badge";
 import { ImagePlaceholder } from "./image-placeholder";
 import { StockBadge } from "./stock-badge";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product, sizes = "(max-width: 639px) calc(100vw - 56px), (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 400px" }: { product: Product; sizes?: string }) {
   const requiresProductOptions =
     (product.sizeLengthBehavior && product.sizeLengthBehavior !== "none") ||
     (product.isSizeCustomizable && Boolean(product.sizeOptions?.length)) ||
@@ -19,8 +20,10 @@ export function ProductCard({ product }: { product: Product }) {
       <Link href={`/products/${product.slug}`} className="block">
         {product.imageUrl ? (
           <div className="min-h-64 overflow-hidden rounded-[2rem] bg-[#fff1f6] ring-1 ring-[#f2c8d5] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.68)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
+              width={640}
+              height={512}
+              sizes={sizes}
               src={product.imageUrl}
               alt={product.imageAlt ?? product.name}
               className="h-64 w-full object-cover transition duration-300 group-hover:scale-[1.025]"

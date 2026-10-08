@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   FinishBadge,
   getFinishCareCopy,
@@ -422,8 +423,7 @@ export function NecklaceBuilder({
                   title={item.name}
                 >
                   {item.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image width={64} height={64} sizes="64px"
                       src={item.imageUrl}
                       alt={item.name}
                       className="h-full w-full object-cover"
@@ -558,8 +558,7 @@ export function NecklaceBuilder({
               >
                 <span className="h-16 w-16 overflow-hidden rounded-2xl bg-[#fff1f6]">
                   {chain.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image width={64} height={64} sizes="64px"
                       src={chain.imageUrl}
                       alt={chain.name}
                       className="h-full w-full object-cover"
@@ -653,8 +652,7 @@ export function NecklaceBuilder({
                       >
                         <span className="h-14 w-14 overflow-hidden rounded-2xl bg-[#fff1f6]">
                           {item.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <Image width={56} height={56} sizes="56px"
                               src={item.imageUrl}
                               alt={item.name}
                               className="h-full w-full object-cover"
@@ -721,8 +719,7 @@ export function NecklaceBuilder({
                 >
                   <span className="h-14 w-14 overflow-hidden rounded-2xl bg-[#fff1f6]">
                     {item.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image width={56} height={56} sizes="56px"
                         src={item.imageUrl}
                         alt={item.name}
                         className="h-full w-full object-cover"

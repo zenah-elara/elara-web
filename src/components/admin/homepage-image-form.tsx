@@ -98,11 +98,12 @@ export function HomepageImageForm({
         return;
       }
 
-      const filePath = `site/homepage/${Date.now()}-${safeFileName(image.name)}`;
+      const filePath = `site/homepage/${crypto.randomUUID()}-${safeFileName(image.name)}`;
       setIsUploading(true);
       const { error: uploadError } = await supabase.storage
         .from(siteAssetsBucket)
         .upload(filePath, image, {
+          cacheControl: "31536000",
           upsert: false,
           contentType: image.type || undefined,
         })

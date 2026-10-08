@@ -64,8 +64,7 @@ function ProductThumb({
   return (
     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#efccd4] bg-[#fff1f6] text-xs font-semibold text-[#7A3F63]">
       {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={alt} className="h-full w-full object-cover" />
+        <Image width={64} height={64} sizes="64px" src={imageUrl} alt={alt} className="h-full w-full object-cover" />
       ) : (
         label ?? "elara."
       )}
@@ -723,3 +722,4 @@ export default async function AdminOrderDetailPage({
     </section>
   );
 }
+import Image from "next/image";

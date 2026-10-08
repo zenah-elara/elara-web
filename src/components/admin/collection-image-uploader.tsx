@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
@@ -102,11 +103,12 @@ export function CollectionImageUploader({
     setUploading(true);
     setIsError(false);
     setMessage("Uploading...");
-    const storagePath = `collections/${savedCollectionId}/${Date.now()}-${safeFileName(file.name)}`;
+    const storagePath = `collections/${savedCollectionId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
 
     const { error: uploadError } = await supabase.storage
       .from("collection-images")
       .upload(storagePath, file, {
+        cacheControl: "31536000",
         contentType: file.type,
         upsert: false,
       });
@@ -180,13 +182,15 @@ export function CollectionImageUploader({
             Current thumbnail
           </p>
         ) : null}
-        {displayUrl ? (
+        {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={displayUrl}
+            src={previewUrl}
             alt={altText || collectionName}
             className="h-56 w-full object-cover"
           />
+        ) : displayUrl ? (
+          <Image width={640} height={224} sizes="(max-width: 767px) 100vw, 640px" src={displayUrl} alt={altText || collectionName} className="h-56 w-full object-cover" />
         ) : (
           <div className="flex h-40 items-center justify-center px-6 text-center text-sm font-semibold text-[#9A4F78]">
             No collection thumbnail uploaded yet.

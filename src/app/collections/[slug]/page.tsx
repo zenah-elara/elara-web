@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import { ProductCard } from "@/components/product-card";
 import { SectionHeader } from "@/components/section-header";
 import {
@@ -27,9 +28,10 @@ export default async function CollectionDetailPage({
     <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
       <div className={`overflow-hidden rounded-[2rem] bg-gradient-to-br ${collection.accent} shadow-sm`}>
         {collection.imageUrl ? (
-          <div className="h-64">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative h-64">
+            <Image
+              fill
+              sizes="(max-width: 1279px) calc(100vw - 48px), 1216px"
               src={collection.imageUrl}
               alt={collection.imageAlt ?? collection.name}
               className="h-full w-full object-cover"

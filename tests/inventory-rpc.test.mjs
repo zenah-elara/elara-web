@@ -18,7 +18,7 @@ test("exact-source inventory RPC on isolated PostgreSQL", { skip: !runtime }, as
       create table admin_profiles(user_id uuid,is_active boolean,role text);
       insert into admin_profiles values('${uid(999)}',true,'owner');
       create table products(id uuid primary key,stock_quantity integer not null check(stock_quantity>=0),
-        has_variants boolean default false,is_active boolean default true,
+        has_variants boolean default false,is_active boolean default true,product_type text default 'necklace',
         size_length_behavior text default 'none',is_size_customizable boolean default false,size_options text[]);
       create table product_variants(id uuid primary key,product_id uuid references products,
         stock_quantity integer not null check(stock_quantity>=0),is_active boolean default true);
@@ -27,13 +27,15 @@ test("exact-source inventory RPC on isolated PostgreSQL", { skip: !runtime }, as
       create table orders(id uuid primary key,status text default 'new',internal_notes text,
         confirmed_at timestamptz,stock_deducted_at timestamptz,cancelled_at timestamptz);
       create table order_items(id uuid primary key,order_id uuid references orders,product_id uuid references products,
-        variant_id uuid references product_variants,item_type text default 'regular_product',quantity integer,selected_size text);
-      create table custom_necklace_items(id uuid primary key,order_item_id uuid references order_items,chain_product_id uuid references products);
+        variant_id uuid references product_variants,item_type text default 'regular_product',quantity integer,selected_size text,
+        selected_custom_length text,item_name text default 'Marina-like necklace');
+      create table custom_necklace_items(id uuid primary key,order_item_id uuid references order_items,chain_product_id uuid references products,chain_name text);
       create table custom_necklace_charms(id uuid primary key,custom_necklace_item_id uuid references custom_necklace_items,
-        charm_product_id uuid references products,quantity integer);
+        charm_product_id uuid references products,quantity integer,charm_name text);
       create table inventory_movements(id uuid primary key default gen_random_uuid(),product_id uuid references products,
         variant_id uuid references product_variants on delete set null,size_inventory_id uuid references product_size_inventory on delete set null,
-        order_id uuid references orders,movement_type text,quantity_change integer,previous_stock integer,new_stock integer,reason text);
+        order_id uuid references orders,movement_type text,quantity_change integer,previous_stock integer,new_stock integer,reason text,
+        created_at timestamptz default now());
     `);
     await db.exec(fs.readFileSync("supabase/migrations/024_fix_variant_inventory_and_out_of_stock.sql", "utf8"));
 
@@ -59,6 +61,60 @@ test("exact-source inventory RPC on isolated PostgreSQL", { skip: !runtime }, as
     async function stock(table, id) {
       return (await db.query(`select stock_quantity from ${table} where id=$1`, [uid(id)])).rows[0].stock_quantity;
     }
+
+    async function customLengthFixture(variantId, quantity) {
+      await reset(); await product(1,0,true,"custom");
+      await variant(11,1,20); await variant(12,1,12);
+      await size(21,1,11,"7",0); await size(22,1,12,"7",0);
+      await item(101,1,variantId,quantity);
+      await db.query("update order_items set selected_custom_length='17'");
+    }
+
+    await t.test("023 reproduces post-deduction zeroing from stale size rows", async () => {
+      const oldSql = fs.readFileSync("supabase/migrations/023_product_size_inventory.sql","utf8");
+      const oldFunction = oldSql.slice(oldSql.indexOf("create or replace function public.update_order_status_inventory("),oldSql.indexOf("comment on table"));
+      try {
+        await db.exec(oldFunction);
+        await customLengthFixture(11,1);
+        assert.equal((await status("confirmed")).success,true);
+        assert.equal(await stock("product_variants",11),0);
+        assert.equal(await stock("product_variants",12),0);
+        const movement = (await db.query("select * from inventory_movements")).rows[0];
+        assert.equal(movement.previous_stock,20);
+        assert.equal(movement.new_stock,19);
+        assert.equal(movement.quantity_change,-1);
+        assert.equal(movement.size_inventory_id,null);
+      } finally {
+        await db.exec(fs.readFileSync("supabase/migrations/024_fix_variant_inventory_and_out_of_stock.sql","utf8"));
+      }
+    });
+
+    await t.test("custom-length variants ignore stale sizes, deduct exactly and restore once", async () => {
+      for (const type of ["necklace","bracelet"]) {
+        for (const [selected,quantity] of [[11,1],[11,2],[12,1]]) {
+          await customLengthFixture(selected,quantity);
+          await db.query("update products set product_type=$1",[type]);
+          assert.equal((await status("confirmed")).success,true);
+          assert.equal(await stock("product_variants",11),20-(selected===11?quantity:0));
+          assert.equal(await stock("product_variants",12),12-(selected===12?quantity:0));
+          assert.equal(await stock("products",1),0);
+          assert.equal((await status("confirmed")).success,true);
+          assert.equal(await stock("product_variants",selected),(selected===11?20:12)-quantity);
+          const movement = (await db.query("select * from inventory_movements")).rows;
+          assert.equal(movement.length,1);
+          assert.equal(movement[0].variant_id,uid(selected));
+          assert.equal(movement[0].size_inventory_id,null);
+          assert.equal(movement[0].quantity_change,-quantity);
+          assert.equal((await db.query("select count(*)::int count from product_size_inventory where stock_quantity<>0")).rows[0].count,0);
+          assert.equal((await db.query("select count(*)::int count from product_size_inventory")).rows[0].count,2);
+          assert.equal((await status("cancelled")).success,true);
+          await status("cancelled");
+          assert.equal(await stock("product_variants",11),20);
+          assert.equal(await stock("product_variants",12),12);
+          assert.equal((await db.query("select count(*)::int count from inventory_movements")).rows[0].count,2);
+        }
+      }
+    });
 
     await t.test("variant-only deduction, repeat confirmation, quantity and exact restoration", async () => {
       await reset(); await product(1,0,true); await variant(11,1,5); await variant(12,1,3);
@@ -149,8 +205,8 @@ test("exact-source inventory RPC on isolated PostgreSQL", { skip: !runtime }, as
     await t.test("builder chain and add-ons retain product-pool deduction and restoration", async () => {
       await reset(); await product(1,4); await product(2,5);
       await db.query("insert into order_items(id,order_id,item_type,quantity) values($1,$2,'custom_necklace',1)",[uid(101),uid(100)]);
-      await db.query("insert into custom_necklace_items values($1,$2,$3)",[uid(201),uid(101),uid(1)]);
-      await db.query("insert into custom_necklace_charms values($1,$2,$3,2)",[uid(301),uid(201),uid(2)]);
+      await db.query("insert into custom_necklace_items(id,order_item_id,chain_product_id) values($1,$2,$3)",[uid(201),uid(101),uid(1)]);
+      await db.query("insert into custom_necklace_charms(id,custom_necklace_item_id,charm_product_id,quantity) values($1,$2,$3,2)",[uid(301),uid(201),uid(2)]);
       assert.equal((await status("confirmed")).success,true);
       assert.equal(await stock("products",1),3);
       assert.equal(await stock("products",2),3);

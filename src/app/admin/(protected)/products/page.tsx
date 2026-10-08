@@ -134,8 +134,7 @@ export default async function AdminProductsPage({
               >
                 <div className="h-14 w-14 overflow-hidden rounded-2xl bg-[#fff1f6]">
                   {primaryImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={primaryImage.image_url} alt={primaryImage.alt_text ?? product.name} className="h-full w-full object-cover" />
+                    <Image width={56} height={56} sizes="56px" src={primaryImage.image_url} alt={primaryImage.alt_text ?? product.name} className="h-full w-full object-cover" />
                   ) : null}
                 </div>
                 <div>
@@ -188,3 +187,4 @@ export default async function AdminProductsPage({
     </section>
   );
 }
+import Image from "next/image";

@@ -212,8 +212,7 @@ export default async function EditProductPage({
           {images.map((image) => (
             <div key={image.id} className="rounded-2xl border border-[#efccd4] bg-white/80 p-4">
               <div className="h-44 overflow-hidden rounded-2xl bg-[#fff1f6]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={image.image_url} alt={image.alt_text ?? product.name} className="h-full w-full object-cover" />
+                <Image width={640} height={352} sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 400px" src={image.image_url} alt={image.alt_text ?? product.name} className="h-full w-full object-cover" />
               </div>
               <p className="mt-3 text-sm text-[#76504a]">{image.alt_text ?? "No alt text"}</p>
               <p className="mt-1 text-xs font-semibold text-gold">{image.is_primary ? "Primary" : "Secondary"}</p>
@@ -251,3 +250,4 @@ export default async function EditProductPage({
     </section>
   );
 }
+import Image from "next/image";
